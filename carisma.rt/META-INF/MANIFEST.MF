@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: JDI
+Bundle-SymbolicName: carisma.rt
+Bundle-Version: 1.0.0.qualifier
+Bundle-ClassPath: JDI.jar,
+  lib/jvm/jdk1.8.0_141/lib/tools.jar,
+  speldszus/Documents/svn/rgse/umlsecrt/implementation/org.gravity.security.annotations/annotations.jar
+Export-Package: carisma.rt
+Require-Bundle: org.gravity.security.annotations

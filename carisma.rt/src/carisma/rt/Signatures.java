@@ -1,0 +1,85 @@
+package carisma.rt;
+
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Parameter;
+
+import com.sun.jdi.Field;
+import com.sun.jdi.Method;
+import com.sun.jdi.PrimitiveType;
+import com.sun.jdi.Type;
+import com.sun.jdi.TypeComponent;
+
+public class Signatures {
+
+	public static String getSignature(Type declaringType) {
+		if(declaringType instanceof PrimitiveType) {
+			return declaringType.name();
+		}
+		String signature = declaringType.signature();
+		signature = signature.replace('/', '.');
+		return signature;
+	}
+
+	public static String getSignature(TypeComponent caller) {
+		if (caller instanceof Method) {
+			return caller.toString();
+		} else if (caller instanceof Field) {
+			return caller.name() + ':' + ((Field) caller).typeName();
+		}
+		return null;
+	}
+
+	public static String getSignature(AccessibleObject reflectionMember) {
+		if (reflectionMember instanceof java.lang.reflect.Member) {
+			java.lang.reflect.Member member = (java.lang.reflect.Member) reflectionMember;
+			StringBuilder builder = new StringBuilder(member.getDeclaringClass().getCanonicalName());
+			if (member instanceof java.lang.reflect.Constructor) {
+				java.lang.reflect.Constructor<?> contructor = (java.lang.reflect.Constructor<?>) member;
+				builder.append(".<init>");
+				appendParameters(builder, contructor.getParameters());
+
+			} else {
+				builder.append('.');
+				builder.append(member.getName());
+				if (member instanceof java.lang.reflect.Method) {
+					java.lang.reflect.Method method = (java.lang.reflect.Method) member;
+					appendParameters(builder, method.getParameters());
+					builder.append(':');
+					builder.append(method.getReturnType().getSimpleName());
+				} else if (member instanceof java.lang.reflect.Field) {
+					java.lang.reflect.Field field = (java.lang.reflect.Field) member;
+					builder.append(':');
+					builder.append(field.getType().getSimpleName());
+				}
+			}
+			return builder.toString();
+		}
+		return null;
+	}
+
+	private static void appendParameters(StringBuilder builder, Parameter[] params) {
+		builder.append('(');
+		if (params.length > 0) {
+			builder.append(params[0].getType().getSimpleName());
+			if (params.length > 1) {
+				for (int i = 1; i < params.length; i++) {
+					builder.append(',');
+					builder.append(params[i].getType().getSimpleName());
+				}
+			}
+		}
+		builder.append(')');
+	}
+	
+	public static boolean equalSignatures(String rhs, String lhs) {
+		String tmpLhs = lhs.replace(" ", "");
+		if(tmpLhs.indexOf(':') < 0) {
+			tmpLhs += ":void";
+		}
+		String tmpRhs = rhs.replace(" ", "");
+		if(tmpRhs.indexOf(':') < 0) {
+			tmpRhs += ":void";
+		}
+		return tmpLhs.endsWith(tmpRhs) || tmpRhs.endsWith(tmpLhs);
+	}
+}
