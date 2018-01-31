@@ -45,11 +45,21 @@ public class Cache {
 			if (((Method) member).isConstructor()) {
 				reflectionMember = reflectionClass.getConstructor(parameters);
 			} else {
-				reflectionMember = reflectionClass.getMethod(member.name(), parameters);
+				try{
+					reflectionMember = reflectionClass.getDeclaredMethod(member.name(), parameters);
+				}
+				catch (Exception e) {
+					reflectionMember = reflectionClass.getMethod(member.name(), parameters);
+				}
 			}
 
 		} else if (member instanceof Field) {
-			reflectionMember = reflectionClass.getDeclaredField(member.name());
+			try {
+				reflectionMember = reflectionClass.getDeclaredField(member.name());
+			}
+			catch(Exception e) {
+				reflectionMember = reflectionClass.getField(member.name());
+			}
 		}
 
 		Annotations annotations = new Annotations(reflectionClass, reflectionMember);

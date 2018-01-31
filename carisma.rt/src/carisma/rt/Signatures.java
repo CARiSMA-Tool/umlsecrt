@@ -71,15 +71,18 @@ public class Signatures {
 		builder.append(')');
 	}
 	
-	public static boolean equalSignatures(String rhs, String lhs) {
-		String tmpLhs = lhs.replace(" ", "");
-		if(tmpLhs.indexOf(':') < 0) {
-			tmpLhs += ":void";
-		}
-		String tmpRhs = rhs.replace(" ", "");
-		if(tmpRhs.indexOf(':') < 0) {
-			tmpRhs += ":void";
-		}
+	public static boolean equivalentSignatures(String rhs, String lhs) {
+		String tmpLhs = normalize(lhs);
+		String tmpRhs = normalize(rhs);
 		return tmpLhs.endsWith(tmpRhs) || tmpRhs.endsWith(tmpLhs);
 	}
+	
+	public static String normalize(String signature) {
+		signature = signature.replace(" ", "");
+		if (signature.indexOf(':') < 0) {
+			return signature + ":void";
+		}
+		return signature;
+	}
+
 }

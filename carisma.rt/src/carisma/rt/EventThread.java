@@ -1,42 +1,12 @@
-/*
- * Copyright (c) 2001, 2011, Oracle and/or its affiliates. All rights reserved.
- * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- */
-
-/*
- * This source code is provided to illustrate the usage of a given feature
- * or technique and has been deliberately simplified. Additional steps
- * required for a production-quality application, such as security checks,
- * input validation and proper error handling, might not be present in
- * this sample code.
- */
-
 package carisma.rt;
 
 import com.sun.jdi.*;
 import com.sun.jdi.request.*;
 import com.sun.jdi.event.*;
 
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.*;
 
 /**
@@ -52,13 +22,21 @@ class EventThread extends Thread {
 	private boolean connected = true; // Connected to VM
 	// Maps ThreadReference to ThreadTrace instances
 	private Map<ThreadReference, SecurityCheck> traceMap = new HashMap<>();
-	List<String> classpath;
+	private final Cache cache;
 
 	EventThread(VirtualMachine vm, String[] excludes, List<String> classpath) {
 		super("event-handler");
 		this.vm = vm;
 		this.excludes = excludes;
-		this.classpath = classpath;
+		URL[] urls = new URL[classpath.size()];
+		for (int i = 0; i < classpath.size(); i++) {
+			try {
+				urls[i] = new File(classpath.get(i)).toURI().toURL();
+			} catch (MalformedURLException e) {
+				e.printStackTrace();
+			}
+		}
+		this.cache = new Cache(urls);
 
 		setEventRequests();
 	}
@@ -81,7 +59,7 @@ class EventThread extends Thread {
 			} catch (InterruptedException exc) {
 				// Ignore
 			} catch (VMDisconnectedException discExc) {
-//				handleDisconnectedException();
+				// handleDisconnectedException();
 				break;
 			}
 		}
@@ -135,7 +113,7 @@ class EventThread extends Thread {
 	private SecurityCheck threadTrace(ThreadReference thread) {
 		SecurityCheck trace = traceMap.get(thread);
 		if (trace == null) {
-			trace = new SecurityCheck(classpath);
+			trace = new SecurityCheck(cache);
 			traceMap.put(thread, trace);
 		}
 		return trace;
@@ -145,86 +123,32 @@ class EventThread extends Thread {
 	 * Dispatch incoming events
 	 */
 	private void handleEvent(Event event) {
-		if (event instanceof ExceptionEvent) {
-//			exceptionEvent((ExceptionEvent) event);
-		} else if (event instanceof ModificationWatchpointEvent) {
-			fieldWatchEvent((ModificationWatchpointEvent) event);
+		if (event instanceof ModificationWatchpointEvent) {
+			fieldModificationEvent((ModificationWatchpointEvent) event);
 		} else if (event instanceof MethodEntryEvent) {
 			methodEntryEvent((MethodEntryEvent) event);
 		} else if (event instanceof MethodExitEvent) {
 			methodExitEvent((MethodExitEvent) event);
-//		} else if (event instanceof StepEvent) {
-//			stepEvent((StepEvent) event);
-//		} else if (event instanceof ThreadDeathEvent) {
-//			threadDeathEvent((ThreadDeathEvent) event);
 		} else if (event instanceof ClassPrepareEvent) {
 			classPrepareEvent((ClassPrepareEvent) event);
-//		} else if (event instanceof VMStartEvent) {
-//			vmStartEvent((VMStartEvent) event);
-//		} else if (event instanceof VMDeathEvent) {
-//			vmDeathEvent((VMDeathEvent) event);
-//		} else if (event instanceof VMDisconnectEvent) {
-//			vmDisconnectEvent((VMDisconnectEvent) event);
-//		} else {
-//			throw new Error("Unexpected event type");
+		}
+		else {
+			System.err.println("Unknown Event: "+event);
 		}
 	}
 
-	/***
-	 * A VMDisconnectedException has happened while dealing with another event. We
-	 * need to flush the event queue, dealing only with exit events (VMDeath,
-	 * VMDisconnect) so that we terminate correctly.
-	 */
-//	private synchronized void handleDisconnectedException() {
-//		EventQueue queue = vm.eventQueue();
-//		while (connected) {
-//			try {
-//				EventSet eventSet = queue.remove();
-//				EventIterator iter = eventSet.eventIterator();
-//				while (iter.hasNext()) {
-//					Event event = iter.nextEvent();
-//					if (event instanceof VMDeathEvent) {
-//						vmDeathEvent((VMDeathEvent) event);
-//					} else if (event instanceof VMDisconnectEvent) {
-//						vmDisconnectEvent((VMDisconnectEvent) event);
-//					}
-//				}
-//				eventSet.resume(); // Resume the VM
-//			} catch (InterruptedException exc) {
-//				// ignore
-//			}
-//		}
-//	}
-//
-//	private void vmStartEvent(VMStartEvent event) {
-//	}
-
-	// Forward event for thread specific processing
+	
 	private void methodEntryEvent(MethodEntryEvent event) {
 		threadTrace(event.thread()).methodEntryEvent(event);
 	}
 
-	// Forward event for thread specific processing
 	private void methodExitEvent(MethodExitEvent event) {
 		threadTrace(event.thread()).methodExitEvent(event);
 	}
 
-//	// Forward event for thread specific processing
-//	private void stepEvent(StepEvent event) {
-//		threadTrace(event.thread()).stepEvent(event);
-//	}
-
-	// Forward event for thread specific processing
-	private void fieldWatchEvent(ModificationWatchpointEvent event) {
-		threadTrace(event.thread()).fieldWatchEvent(event);
+	private void fieldModificationEvent(ModificationWatchpointEvent event) {
+		threadTrace(event.thread()).fieldModificationEvent(event);
 	}
-
-//	void threadDeathEvent(ThreadDeathEvent event) {
-//		SecurityCheck trace = traceMap.get(event.thread());
-//		if (trace != null) { // only want threads we care about
-//			trace.threadDeathEvent(event); // Forward event
-//		}
-//	}
 
 	/**
 	 * A new class has been loaded. Set watchpoints on each of its fields
@@ -233,26 +157,25 @@ class EventThread extends Thread {
 		EventRequestManager mgr = vm.eventRequestManager();
 		List<Field> fields = event.referenceType().visibleFields();
 		for (Field field : fields) {
-			ModificationWatchpointRequest req = mgr.createModificationWatchpointRequest(field);
-			for (int i = 0; i < excludes.length; ++i) {
-				req.addClassExclusionFilter(excludes[i]);
+			try {
+				Annotations annotation = cache.getAnnotations(field);
+				if (annotation.getSecrecy().contains(annotation.getMemberSignature())
+						|| annotation.getIntegrity().contains(annotation.getMemberSignature())) {
+					ModificationWatchpointRequest modificationWatchPoint = mgr.createModificationWatchpointRequest(field);
+					AccessWatchpointRequest accessWatchPoint = mgr.createAccessWatchpointRequest(field);
+					for (int i = 0; i < excludes.length; ++i) {
+						modificationWatchPoint.addClassExclusionFilter(excludes[i]);
+						accessWatchPoint.addClassExclusionFilter(excludes[i]);
+					}
+					modificationWatchPoint.setSuspendPolicy(EventRequest.SUSPEND_NONE);
+					accessWatchPoint.setSuspendPolicy(EventRequest.SUSPEND_NONE);
+					modificationWatchPoint.enable();
+					accessWatchPoint.enable();
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
-			req.setSuspendPolicy(EventRequest.SUSPEND_NONE);
-			req.enable();
+
 		}
 	}
-
-//	private void exceptionEvent(ExceptionEvent event) {
-//		SecurityCheck trace = traceMap.get(event.thread());
-//		if (trace != null) { // only want threads we care about
-//			trace.exceptionEvent(event); // Forward event
-//		}
-//	}
-//
-//	private void vmDeathEvent(VMDeathEvent event) {
-//	}
-//
-//	private void vmDisconnectEvent(VMDisconnectEvent event) {
-//		connected = false;
-//	}
 }

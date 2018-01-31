@@ -11,24 +11,21 @@ import org.gravity.security.annotations.requirements.Integrity;
 import org.gravity.security.annotations.requirements.Secrecy;
 
 public class Annotations {
-	
-	private final boolean hasSecrecy, hasIntegrity;
+
 	private final Set<String> secrecy, integrity;
 	private final String memberSignature;
-	
+
 	public Annotations(Class<?> reflectionClass, AccessibleObject reflectionMember) {
 		this.memberSignature = Signatures.getSignature(reflectionMember);
-		
-		boolean hasSecrecy = false;
+
 		Set<String> secrecy = new HashSet<>();
-		boolean hasIntegrity = false;
 		Set<String> integrity = new HashSet<>();
 
 		for (Annotation annotation : reflectionMember.getDeclaredAnnotations()) {
 			if (annotation instanceof Secrecy) {
-				hasSecrecy = true;
+				secrecy.add(memberSignature);
 			} else if (annotation instanceof Integrity) {
-				hasIntegrity = true;
+				integrity.add(memberSignature);
 			}
 		}
 
@@ -36,33 +33,19 @@ public class Annotations {
 			if (annotation instanceof Critical) {
 				Critical critical = (Critical) annotation;
 				for (String signature : critical.secrecy()) {
-					if (signature.equals(memberSignature)) {
-						hasSecrecy = true;
-					} else {
-						secrecy.add(signature);
+					if (!signature.equals(memberSignature)) {
+						secrecy.add(Signatures.normalize(signature));
 					}
 				}
 				for (String signature : critical.integrity()) {
-					if (signature.equals(memberSignature)) {
-						hasIntegrity = true;
-					} else {
-						integrity.add(signature);
+					if (!signature.equals(memberSignature)) {
+						integrity.add(Signatures.normalize(signature));
 					}
 				}
 			}
 		}
 		this.secrecy = Collections.unmodifiableSet(secrecy);
-		this.hasSecrecy = hasSecrecy; //todo: add to list
 		this.integrity = Collections.unmodifiableSet(integrity);
-		this.hasIntegrity = hasIntegrity;
-	}
-	
-	public boolean hasSecrecy() {
-		return hasSecrecy;
-	}
-
-	public boolean hasIntegrity() {
-		return hasIntegrity;
 	}
 
 	public Set<String> getSecrecy() {
@@ -76,9 +59,9 @@ public class Annotations {
 	public String getMemberSignature() {
 		return memberSignature;
 	}
-	
+
 	@Override
 	public String toString() {
-		return super.toString()+ "("+memberSignature+": secrecy="+hasSecrecy+", integrity="+hasIntegrity+", secrecy="+secrecy+", integrity="+integrity+")";
+		return super.toString() + "(" + memberSignature + ": secrecy=" + secrecy + ", integrity=" + integrity + ")";
 	}
 }

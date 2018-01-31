@@ -1,9 +1,5 @@
 package carisma.rt;
 
-import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.List;
 import java.util.Stack;
 import com.sun.jdi.Field;
 import com.sun.jdi.Method;
@@ -17,17 +13,9 @@ class SecurityCheck {
 	private final Stack<TypeComponent> stack;
 	private final Cache cache;
 
-	SecurityCheck(List<String> classpath) {
+	SecurityCheck(Cache cache) {
 		this.stack = new Stack<TypeComponent>();
-		URL[] urls = new URL[classpath.size()];
-		for (int i = 0; i < classpath.size(); i++) {
-			try {
-				urls[i] = new File(classpath.get(i)).toURI().toURL();
-			} catch (MalformedURLException e) {
-				e.printStackTrace();
-			}
-		}
-		this.cache = new Cache(urls);
+		this.cache = cache;
 	}
 
 	void methodEntryEvent(MethodEntryEvent event) {
@@ -48,47 +36,57 @@ class SecurityCheck {
 	}
 
 	private void check(Annotations lhsAnnotations, Annotations rhsAnnotations) {
-		boolean lhsRequiresRhsSecrecy = false;
-		String rhsSignature = rhsAnnotations.getMemberSignature();
-		for (String value : lhsAnnotations.getSecrecy()) {
-			if (Signatures.equalSignatures(rhsSignature, value)) {
+		String rhsMemberSignature = rhsAnnotations.getMemberSignature();
+		
+		boolean lhsRequiresRhsSecrecy = false; 
+		for(String lhsSecrecy : lhsAnnotations.getSecrecy()) {
+			if(Signatures.equivalentSignatures(lhsSecrecy, rhsMemberSignature)) {
 				lhsRequiresRhsSecrecy = true;
 				break;
 			}
 		}
-		if (lhsRequiresRhsSecrecy != rhsAnnotations.hasSecrecy()) {
-			String req;
-			String prov;
+		boolean rhsRequiresRhsSecrecy = false;
+		for(String rhsSecrecy : rhsAnnotations.getSecrecy()) {
+			if(Signatures.equivalentSignatures(rhsSecrecy, rhsMemberSignature)) {
+				rhsRequiresRhsSecrecy = true;
+				break;
+			}
+		}
+		if (lhsRequiresRhsSecrecy != rhsRequiresRhsSecrecy) {
+			String lhsMemberSignature = lhsAnnotations.getMemberSignature();
 			if (lhsRequiresRhsSecrecy) {
-				req = lhsAnnotations.getMemberSignature();
-				prov = rhsAnnotations.getMemberSignature();
+				System.err.println("Violation of Secrecy: \"" + lhsMemberSignature + "\" requires secrecy but \""
+						+ rhsMemberSignature + "\" doesn't provides secrecy!");
 			} else {
-				prov = lhsAnnotations.getMemberSignature();
-				req = rhsAnnotations.getMemberSignature();
-			}System.err.println("Violation of Secrecy: \"" + req + "\" requires secrecy but \"" + prov
-					+ "\" doesn't provides secrecy!");
+				System.err.println("Violation of Secrecy: \"" + rhsMemberSignature + "\" requires secrecy but \""
+						+ lhsMemberSignature + "\" doesn't provides secrecy!");
+			}
 			System.exit(-1);
 		}
 
-		boolean lhsRequiresRhsIntegrity = false;
-		for (String value : lhsAnnotations.getIntegrity()) {
-			if (Signatures.equalSignatures(rhsSignature, value)) {
+		boolean lhsRequiresRhsIntegrity = false; 
+		for(String lhsIntegrity : lhsAnnotations.getIntegrity()) {
+			if(Signatures.equivalentSignatures(lhsIntegrity, rhsMemberSignature)) {
 				lhsRequiresRhsIntegrity = true;
 				break;
 			}
 		}
-		if (lhsRequiresRhsIntegrity != rhsAnnotations.hasIntegrity()) {
-			String req;
-			String prov;
-			if (lhsRequiresRhsIntegrity) {
-				req = lhsAnnotations.getMemberSignature();
-				prov = rhsAnnotations.getMemberSignature();
-			} else {
-				prov = lhsAnnotations.getMemberSignature();
-				req = rhsAnnotations.getMemberSignature();
+		boolean rhsRequiresRhsIntegrity = false;
+		for(String rhsIntegrity : rhsAnnotations.getIntegrity()) {
+			if(Signatures.equivalentSignatures(rhsIntegrity, rhsMemberSignature)) {
+				rhsRequiresRhsIntegrity = true;
+				break;
 			}
-			System.err.println("Violation of Integrity: \"" + req + "\" requires secrecy but \"" + prov
-					+ "\" doesn't provides secrecy!");
+		}
+		if (lhsRequiresRhsIntegrity != rhsRequiresRhsIntegrity) {
+			String lhsMemberSignature = lhsAnnotations.getMemberSignature();
+			if (lhsRequiresRhsIntegrity) {
+				System.err.println("Violation of Integrity: \"" + lhsMemberSignature + "\" requires integrity but \""
+						+ rhsMemberSignature + "\" doesn't provides integrity!");
+			} else {
+				System.err.println("Violation of Integrity: \"" + rhsMemberSignature + "\" requires integrity but \""
+						+ lhsMemberSignature + "\" doesn't provides integrity!");
+			}
 			System.exit(-1);
 		}
 	}
@@ -97,7 +95,7 @@ class SecurityCheck {
 		stack.pop();
 	}
 
-	void fieldWatchEvent(ModificationWatchpointEvent event) {
+	void fieldModificationEvent(ModificationWatchpointEvent event) {
 		Field field = event.field();
 		try {
 			Annotations annotations = cache.getAnnotations(field);
@@ -110,23 +108,24 @@ class SecurityCheck {
 		}
 	}
 
-//	void exceptionEvent(ExceptionEvent event) {
-//
-//		// Step to the catch
-//		EventRequestManager mgr = this.eventThread.vm.eventRequestManager();
-//		StepRequest req = mgr.createStepRequest(thread, StepRequest.STEP_MIN, StepRequest.STEP_INTO);
-//		req.addCountFilter(1); // next step only
-//		req.setSuspendPolicy(EventRequest.SUSPEND_ALL);
-//		req.enable();
-//	}
-//
-//	// Step to exception catch
-//	void stepEvent(StepEvent event) {
-//		EventRequestManager mgr = this.eventThread.vm.eventRequestManager();
-//		mgr.deleteEventRequest(event.request());
-//	}
-//
-//	void threadDeathEvent(ThreadDeathEvent event) {
-//
-//	}
+	// void exceptionEvent(ExceptionEvent event) {
+	//
+	// // Step to the catch
+	// EventRequestManager mgr = this.eventThread.vm.eventRequestManager();
+	// StepRequest req = mgr.createStepRequest(thread, StepRequest.STEP_MIN,
+	// StepRequest.STEP_INTO);
+	// req.addCountFilter(1); // next step only
+	// req.setSuspendPolicy(EventRequest.SUSPEND_ALL);
+	// req.enable();
+	// }
+	//
+	// // Step to exception catch
+	// void stepEvent(StepEvent event) {
+	// EventRequestManager mgr = this.eventThread.vm.eventRequestManager();
+	// mgr.deleteEventRequest(event.request());
+	// }
+	//
+	// void threadDeathEvent(ThreadDeathEvent event) {
+	//
+	// }
 }
