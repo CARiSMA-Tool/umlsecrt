@@ -1,19 +1,17 @@
 package carisma.rt;
 
 import java.util.Stack;
-import com.sun.jdi.Field;
 import com.sun.jdi.Method;
 import com.sun.jdi.TypeComponent;
 import com.sun.jdi.event.MethodEntryEvent;
 import com.sun.jdi.event.MethodExitEvent;
-import com.sun.jdi.event.ModificationWatchpointEvent;
 
 class SecurityCheck {
 
 	private final Stack<TypeComponent> stack;
-	private final Cache cache;
+	private final ClassloaderCache cache;
 
-	SecurityCheck(Cache cache) {
+	SecurityCheck(ClassloaderCache cache) {
 		this.stack = new Stack<TypeComponent>();
 		this.cache = cache;
 	}
@@ -24,30 +22,42 @@ class SecurityCheck {
 		if (stack.size() < 2) {
 			return;
 		}
+		checkSecureDependencies(method);
+	}
+
+	void methodExitEvent(MethodExitEvent event) {
+		stack.pop();
+	}
+
+	void fieldEvent(TypeComponent field) {
+		checkSecureDependencies(field);
+	}
+
+	private void checkSecureDependencies(TypeComponent member) {
 		try {
-			Annotations annotations = cache.getAnnotations(method);
+			Annotations annotations = cache.getAnnotations(member);
 			TypeComponent caller = stack.get(stack.size() - 2);
 			Annotations callerAnnotations = cache.getAnnotations(caller);
-
-			check(callerAnnotations, annotations);
+	
+			checkSecureDependencies(callerAnnotations, annotations);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
-	private void check(Annotations lhsAnnotations, Annotations rhsAnnotations) {
+	private void checkSecureDependencies(Annotations lhsAnnotations, Annotations rhsAnnotations) {
 		String rhsMemberSignature = rhsAnnotations.getMemberSignature();
 		
 		boolean lhsRequiresRhsSecrecy = false; 
 		for(String lhsSecrecy : lhsAnnotations.getSecrecy()) {
-			if(Signatures.equivalentSignatures(lhsSecrecy, rhsMemberSignature)) {
+			if(SignatureHelper.equivalentSignatures(lhsSecrecy, rhsMemberSignature)) {
 				lhsRequiresRhsSecrecy = true;
 				break;
 			}
 		}
 		boolean rhsRequiresRhsSecrecy = false;
 		for(String rhsSecrecy : rhsAnnotations.getSecrecy()) {
-			if(Signatures.equivalentSignatures(rhsSecrecy, rhsMemberSignature)) {
+			if(SignatureHelper.equivalentSignatures(rhsSecrecy, rhsMemberSignature)) {
 				rhsRequiresRhsSecrecy = true;
 				break;
 			}
@@ -63,17 +73,17 @@ class SecurityCheck {
 			}
 			System.exit(-1);
 		}
-
+	
 		boolean lhsRequiresRhsIntegrity = false; 
 		for(String lhsIntegrity : lhsAnnotations.getIntegrity()) {
-			if(Signatures.equivalentSignatures(lhsIntegrity, rhsMemberSignature)) {
+			if(SignatureHelper.equivalentSignatures(lhsIntegrity, rhsMemberSignature)) {
 				lhsRequiresRhsIntegrity = true;
 				break;
 			}
 		}
 		boolean rhsRequiresRhsIntegrity = false;
 		for(String rhsIntegrity : rhsAnnotations.getIntegrity()) {
-			if(Signatures.equivalentSignatures(rhsIntegrity, rhsMemberSignature)) {
+			if(SignatureHelper.equivalentSignatures(rhsIntegrity, rhsMemberSignature)) {
 				rhsRequiresRhsIntegrity = true;
 				break;
 			}
@@ -91,41 +101,4 @@ class SecurityCheck {
 		}
 	}
 
-	void methodExitEvent(MethodExitEvent event) {
-		stack.pop();
-	}
-
-	void fieldModificationEvent(ModificationWatchpointEvent event) {
-		Field field = event.field();
-		try {
-			Annotations annotations = cache.getAnnotations(field);
-			TypeComponent caller = stack.get(stack.size() - 2);
-			Annotations callerAnnotations = cache.getAnnotations(caller);
-
-			check(callerAnnotations, annotations);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	// void exceptionEvent(ExceptionEvent event) {
-	//
-	// // Step to the catch
-	// EventRequestManager mgr = this.eventThread.vm.eventRequestManager();
-	// StepRequest req = mgr.createStepRequest(thread, StepRequest.STEP_MIN,
-	// StepRequest.STEP_INTO);
-	// req.addCountFilter(1); // next step only
-	// req.setSuspendPolicy(EventRequest.SUSPEND_ALL);
-	// req.enable();
-	// }
-	//
-	// // Step to exception catch
-	// void stepEvent(StepEvent event) {
-	// EventRequestManager mgr = this.eventThread.vm.eventRequestManager();
-	// mgr.deleteEventRequest(event.request());
-	// }
-	//
-	// void threadDeathEvent(ThreadDeathEvent event) {
-	//
-	// }
 }

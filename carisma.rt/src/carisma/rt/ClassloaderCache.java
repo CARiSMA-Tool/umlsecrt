@@ -1,17 +1,20 @@
 package carisma.rt;
 
+import java.io.File;
 import java.lang.reflect.AccessibleObject;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Set;
 
 import com.sun.jdi.Field;
 import com.sun.jdi.Method;
 import com.sun.jdi.Type;
 import com.sun.jdi.TypeComponent;
 
-public class Cache {
+public class ClassloaderCache {
 
 	private Hashtable<String, Class<?>> classes = new Hashtable<>();
 
@@ -20,7 +23,16 @@ public class Cache {
 
 	private final ClassLoader loader;
 
-	public Cache(URL[] urls) {
+	public ClassloaderCache(Set<String> classpath) {
+		int i = 0;
+		URL[] urls = new URL[classpath.size()];
+		for (String entry : classpath) {
+			try {
+				urls[i++] = new File(entry).toURI().toURL();
+			} catch (MalformedURLException e) {
+				e.printStackTrace();
+			}
+		}
 		this.loader = new URLClassLoader(urls, this.getClass().getClassLoader());
 	}
 
@@ -30,7 +42,7 @@ public class Cache {
 			return memberAnnotations.get(memberSignature);
 		}
 
-		String classSignature = Signatures.getSignature(member.declaringType());
+		String classSignature = SignatureHelper.getSignature(member.declaringType());
 		Class<?> reflectionClass = loadClass(classSignature);
 		
 		AccessibleObject reflectionMember = null;
@@ -39,7 +51,7 @@ public class Cache {
 			Class<?>[] parameters = new Class<?>[argumentTypes.size()];
 			for (int i = 0; i < argumentTypes.size(); i++) {
 				Type parameter = argumentTypes.get(i);
-				parameters[i] = loadClass(Signatures.getSignature(parameter));
+				parameters[i] = loadClass(SignatureHelper.getSignature(parameter));
 
 			}
 			if (((Method) member).isConstructor()) {

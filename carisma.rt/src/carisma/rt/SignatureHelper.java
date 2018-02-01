@@ -9,7 +9,7 @@ import com.sun.jdi.PrimitiveType;
 import com.sun.jdi.Type;
 import com.sun.jdi.TypeComponent;
 
-public class Signatures {
+public class SignatureHelper {
 
 	public static String getSignature(Type declaringType) {
 		if(declaringType instanceof PrimitiveType) {

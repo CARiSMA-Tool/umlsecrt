@@ -1,54 +1,17 @@
-/*
- * Copyright (c) 2001, 2011, Oracle and/or its affiliates. All rights reserved.
- * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- */
-
-/*
- * This source code is provided to illustrate the usage of a given feature
- * or technique and has been deliberately simplified. Additional steps
- * required for a production-quality application, such as security checks,
- * input validation and proper error handling, might not be present in
- * this sample code.
- */
-
 package carisma.rt;
 
 import com.sun.jdi.VirtualMachine;
 import com.sun.jdi.Bootstrap;
 import com.sun.jdi.connect.*;
 import java.util.Map;
-import java.util.LinkedList;
+import java.util.Set;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 import java.io.IOException;
 
-/**
- * This program traces the execution of another program. See "java Trace -help".
- * It is a simple example of the use of the Java Debug Interface.
- *
- * @author Robert Field
- */
-public class Trace {
+public class CarismaRT {
 
 	// Running remote VM
 	private final VirtualMachine vm;
@@ -59,26 +22,19 @@ public class Trace {
 	// Thread transferring remote output stream to our output stream
 	private Thread outThread = null;
 
-	// Mode for tracing the Trace program (default= 0 off)
-	private int debugTraceMode = 0;
-
 	// Class patterns for which we don't want events
-	private String[] excludes = { "java.*", "javax.*", "sun.*", "com.sun.*", "jdk.*" };
+	private String[] excludes = new String[]{ "java.*", "javax.*", "sun.*", "com.sun.*", "jdk.*" };
 
-	private List<String> classpath = new LinkedList<String>();
+	private Set<String> classpath = new HashSet<String>();
 
-	/**
-	 * main
-	 */
 	public static void main(String[] args) {
-		new Trace(args);
+		new CarismaRT(args).run();
 	}
 
 	/**
-	 * Parse the command line arguments. Launch target VM. Generate the trace.
+	 * Parse the command line arguments. Launch target VM.
 	 */
-	Trace(String[] args) {
-		//exclude add java.security.Security.getProperty("package.access").split(",")
+	CarismaRT(String[] args) {
 		int inx;
 		for (inx = 0; inx < args.length; ++inx) {
 			String arg = args[inx];
@@ -87,9 +43,7 @@ public class Trace {
 			}
 			if (arg.equals("-all")) {
 				excludes = new String[0];
-			} else if (arg.equals("-dbgtrace")) {
-				debugTraceMode = Integer.parseInt(args[++inx]);
-			} else if (arg.equals("-help")) {
+			} if (arg.equals("-help")) {
 				usage();
 				System.exit(0);
 			} else {
@@ -106,7 +60,6 @@ public class Trace {
 		String[] strings = new String[args.length - inx];
 		System.arraycopy(args, inx, strings, 0, args.length);
 		vm = launchTarget(strings);
-		generateTrace();
 	}
 
 	/**
@@ -114,9 +67,12 @@ public class Trace {
 	 * threads to forward remote error and output streams, resume the remote VM,
 	 * wait for the final event, and shutdown.
 	 */
-	void generateTrace() {
-		vm.setDebugTraceMode(debugTraceMode);
-		EventThread eventThread = new EventThread(vm, excludes, classpath);
+	void run() {
+		String[] restrictedPackages = java.security.Security.getProperty("package.access").split(",");
+		Set<String> allExcludes = new HashSet<>(restrictedPackages.length+excludes.length);
+		allExcludes.addAll(Arrays.asList(restrictedPackages));
+		allExcludes.addAll(Arrays.asList(excludes));
+		EventThread eventThread = new EventThread(vm, allExcludes, classpath);
 		eventThread.start();
 		redirectOutput();
 		vm.resume();

@@ -14,9 +14,11 @@ public class Annotations {
 
 	private final Set<String> secrecy, integrity;
 	private final String memberSignature;
+	private final AccessibleObject member;
 
 	public Annotations(Class<?> reflectionClass, AccessibleObject reflectionMember) {
-		this.memberSignature = Signatures.getSignature(reflectionMember);
+		this.member = reflectionMember;
+		this.memberSignature = SignatureHelper.getSignature(reflectionMember);
 
 		Set<String> secrecy = new HashSet<>();
 		Set<String> integrity = new HashSet<>();
@@ -34,12 +36,12 @@ public class Annotations {
 				Critical critical = (Critical) annotation;
 				for (String signature : critical.secrecy()) {
 					if (!signature.equals(memberSignature)) {
-						secrecy.add(Signatures.normalize(signature));
+						secrecy.add(SignatureHelper.normalize(signature));
 					}
 				}
 				for (String signature : critical.integrity()) {
 					if (!signature.equals(memberSignature)) {
-						integrity.add(Signatures.normalize(signature));
+						integrity.add(SignatureHelper.normalize(signature));
 					}
 				}
 			}
@@ -58,6 +60,10 @@ public class Annotations {
 
 	public String getMemberSignature() {
 		return memberSignature;
+	}
+
+	public AccessibleObject getMember() {
+		return member;
 	}
 
 	@Override

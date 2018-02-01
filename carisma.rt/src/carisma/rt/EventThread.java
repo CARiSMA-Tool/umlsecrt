@@ -4,51 +4,29 @@ import com.sun.jdi.*;
 import com.sun.jdi.request.*;
 import com.sun.jdi.event.*;
 
-import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.*;
 
-/**
- * This class processes incoming JDI events and displays them
- *
- * @author Robert Field
- */
 class EventThread extends Thread {
 
-	final VirtualMachine vm; // Running VM
-	private final String[] excludes; // Packages to exclude
+	final VirtualMachine vm;
+	private final Set<String> excludes;
 
-	private boolean connected = true; // Connected to VM
-	// Maps ThreadReference to ThreadTrace instances
 	private Map<ThreadReference, SecurityCheck> traceMap = new HashMap<>();
-	private final Cache cache;
+	private final ClassloaderCache cache;
 
-	EventThread(VirtualMachine vm, String[] excludes, List<String> classpath) {
+	EventThread(VirtualMachine vm, Set<String> excludes, Set<String> classpath) {
 		super("event-handler");
 		this.vm = vm;
 		this.excludes = excludes;
-		URL[] urls = new URL[classpath.size()];
-		for (int i = 0; i < classpath.size(); i++) {
-			try {
-				urls[i] = new File(classpath.get(i)).toURI().toURL();
-			} catch (MalformedURLException e) {
-				e.printStackTrace();
-			}
-		}
-		this.cache = new Cache(urls);
+		this.cache = new ClassloaderCache(classpath);
 
 		setEventRequests();
 	}
 
-	/**
-	 * Run the event handling thread. As long as we are connected, get event sets
-	 * off the queue and dispatch the events within them.
-	 */
 	@Override
 	public void run() {
 		EventQueue queue = vm.eventQueue();
-		while (connected) {
+		while (true) {
 			try {
 				EventSet eventSet = queue.remove();
 				EventIterator it = eventSet.eventIterator();
@@ -56,10 +34,8 @@ class EventThread extends Thread {
 					handleEvent(it.nextEvent());
 				}
 				eventSet.resume();
-			} catch (InterruptedException exc) {
-				// Ignore
-			} catch (VMDisconnectedException discExc) {
-				// handleDisconnectedException();
+			} catch (InterruptedException | VMDisconnectedException e) {
+				e.printStackTrace();
 				break;
 			}
 		}
@@ -72,34 +48,23 @@ class EventThread extends Thread {
 	private void setEventRequests() {
 		EventRequestManager mgr = vm.eventRequestManager();
 
-		// want all exceptions
-		ExceptionRequest excReq = mgr.createExceptionRequest(null, true, true);
-		// suspend so we can step
-		excReq.setSuspendPolicy(EventRequest.SUSPEND_ALL);
-		excReq.enable();
-
 		MethodEntryRequest menr = mgr.createMethodEntryRequest();
-		for (int i = 0; i < excludes.length; ++i) {
-			menr.addClassExclusionFilter(excludes[i]);
+		for (String exclude : excludes) {
+			menr.addClassExclusionFilter(exclude);
 		}
 		menr.setSuspendPolicy(EventRequest.SUSPEND_NONE);
 		menr.enable();
 
 		MethodExitRequest mexr = mgr.createMethodExitRequest();
-		for (int i = 0; i < excludes.length; ++i) {
-			mexr.addClassExclusionFilter(excludes[i]);
+		for (String exclude : excludes) {
+			mexr.addClassExclusionFilter(exclude);
 		}
 		mexr.setSuspendPolicy(EventRequest.SUSPEND_NONE);
 		mexr.enable();
 
-		ThreadDeathRequest tdr = mgr.createThreadDeathRequest();
-		// Make sure we sync on thread death
-		tdr.setSuspendPolicy(EventRequest.SUSPEND_ALL);
-		tdr.enable();
-
 		ClassPrepareRequest cpr = mgr.createClassPrepareRequest();
-		for (int i = 0; i < excludes.length; ++i) {
-			cpr.addClassExclusionFilter(excludes[i]);
+		for (String exclude : excludes) {
+			cpr.addClassExclusionFilter(exclude);
 		}
 		cpr.setSuspendPolicy(EventRequest.SUSPEND_ALL);
 		cpr.enable();
@@ -123,37 +88,21 @@ class EventThread extends Thread {
 	 * Dispatch incoming events
 	 */
 	private void handleEvent(Event event) {
-		if (event instanceof ModificationWatchpointEvent) {
-			fieldModificationEvent((ModificationWatchpointEvent) event);
+		if (event instanceof ModificationWatchpointEvent || event instanceof AccessWatchpointEvent) {
+			threadTrace(((LocatableEvent) event).thread()).fieldEvent(((WatchpointEvent) event).field());
 		} else if (event instanceof MethodEntryEvent) {
-			methodEntryEvent((MethodEntryEvent) event);
+			threadTrace(((MethodEntryEvent) event).thread()).methodEntryEvent((MethodEntryEvent) event);
 		} else if (event instanceof MethodExitEvent) {
-			methodExitEvent((MethodExitEvent) event);
+			threadTrace(((MethodExitEvent) event).thread()).methodExitEvent((MethodExitEvent) event);
 		} else if (event instanceof ClassPrepareEvent) {
-			classPrepareEvent((ClassPrepareEvent) event);
+			prepareClass((ClassPrepareEvent) event);
 		}
-		else {
-			System.err.println("Unknown Event: "+event);
-		}
-	}
-
-	
-	private void methodEntryEvent(MethodEntryEvent event) {
-		threadTrace(event.thread()).methodEntryEvent(event);
-	}
-
-	private void methodExitEvent(MethodExitEvent event) {
-		threadTrace(event.thread()).methodExitEvent(event);
-	}
-
-	private void fieldModificationEvent(ModificationWatchpointEvent event) {
-		threadTrace(event.thread()).fieldModificationEvent(event);
 	}
 
 	/**
 	 * A new class has been loaded. Set watchpoints on each of its fields
 	 */
-	private void classPrepareEvent(ClassPrepareEvent event) {
+	private void prepareClass(ClassPrepareEvent event) {
 		EventRequestManager mgr = vm.eventRequestManager();
 		List<Field> fields = event.referenceType().visibleFields();
 		for (Field field : fields) {
@@ -161,11 +110,12 @@ class EventThread extends Thread {
 				Annotations annotation = cache.getAnnotations(field);
 				if (annotation.getSecrecy().contains(annotation.getMemberSignature())
 						|| annotation.getIntegrity().contains(annotation.getMemberSignature())) {
-					ModificationWatchpointRequest modificationWatchPoint = mgr.createModificationWatchpointRequest(field);
+					ModificationWatchpointRequest modificationWatchPoint = mgr
+							.createModificationWatchpointRequest(field);
 					AccessWatchpointRequest accessWatchPoint = mgr.createAccessWatchpointRequest(field);
-					for (int i = 0; i < excludes.length; ++i) {
-						modificationWatchPoint.addClassExclusionFilter(excludes[i]);
-						accessWatchPoint.addClassExclusionFilter(excludes[i]);
+					for (String exclude : excludes) {
+						modificationWatchPoint.addClassExclusionFilter(exclude);
+						accessWatchPoint.addClassExclusionFilter(exclude);
 					}
 					modificationWatchPoint.setSuspendPolicy(EventRequest.SUSPEND_NONE);
 					accessWatchPoint.setSuspendPolicy(EventRequest.SUSPEND_NONE);
