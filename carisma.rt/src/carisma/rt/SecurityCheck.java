@@ -30,6 +30,7 @@ class SecurityCheck {
 	}
 
 	void fieldEvent(TypeComponent field) {
+		System.out.println(SignatureHelper.getSignature(field));
 		checkSecureDependencies(field);
 	}
 
@@ -48,20 +49,9 @@ class SecurityCheck {
 	private void checkSecureDependencies(Annotations lhsAnnotations, Annotations rhsAnnotations) {
 		String rhsMemberSignature = rhsAnnotations.getMemberSignature();
 		
-		boolean lhsRequiresRhsSecrecy = false; 
-		for(String lhsSecrecy : lhsAnnotations.getSecrecy()) {
-			if(SignatureHelper.equivalentSignatures(lhsSecrecy, rhsMemberSignature)) {
-				lhsRequiresRhsSecrecy = true;
-				break;
-			}
-		}
-		boolean rhsRequiresRhsSecrecy = false;
-		for(String rhsSecrecy : rhsAnnotations.getSecrecy()) {
-			if(SignatureHelper.equivalentSignatures(rhsSecrecy, rhsMemberSignature)) {
-				rhsRequiresRhsSecrecy = true;
-				break;
-			}
-		}
+		boolean lhsRequiresRhsSecrecy = lhsAnnotations.hasSecrecy(rhsMemberSignature);
+		boolean rhsRequiresRhsSecrecy = rhsAnnotations.hasSecrecy(rhsMemberSignature);
+		
 		if (lhsRequiresRhsSecrecy != rhsRequiresRhsSecrecy) {
 			String lhsMemberSignature = lhsAnnotations.getMemberSignature();
 			if (lhsRequiresRhsSecrecy) {
@@ -74,20 +64,9 @@ class SecurityCheck {
 			System.exit(-1);
 		}
 	
-		boolean lhsRequiresRhsIntegrity = false; 
-		for(String lhsIntegrity : lhsAnnotations.getIntegrity()) {
-			if(SignatureHelper.equivalentSignatures(lhsIntegrity, rhsMemberSignature)) {
-				lhsRequiresRhsIntegrity = true;
-				break;
-			}
-		}
-		boolean rhsRequiresRhsIntegrity = false;
-		for(String rhsIntegrity : rhsAnnotations.getIntegrity()) {
-			if(SignatureHelper.equivalentSignatures(rhsIntegrity, rhsMemberSignature)) {
-				rhsRequiresRhsIntegrity = true;
-				break;
-			}
-		}
+		boolean lhsRequiresRhsIntegrity = lhsAnnotations.hasIntegrity(rhsMemberSignature);
+		boolean rhsRequiresRhsIntegrity = rhsAnnotations.hasIntegrity(rhsMemberSignature);
+		
 		if (lhsRequiresRhsIntegrity != rhsRequiresRhsIntegrity) {
 			String lhsMemberSignature = lhsAnnotations.getMemberSignature();
 			if (lhsRequiresRhsIntegrity) {

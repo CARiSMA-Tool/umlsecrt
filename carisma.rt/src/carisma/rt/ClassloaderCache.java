@@ -22,8 +22,8 @@ public class ClassloaderCache {
 	private Hashtable<String, Annotations> clazzAnnotations = new Hashtable<>();
 
 	private final ClassLoader loader;
-
-	public ClassloaderCache(Set<String> classpath) {
+	
+	public ClassloaderCache(Set<String> classpath, ClassLoader parent) {
 		int i = 0;
 		URL[] urls = new URL[classpath.size()];
 		for (String entry : classpath) {
@@ -33,7 +33,7 @@ public class ClassloaderCache {
 				e.printStackTrace();
 			}
 		}
-		this.loader = new URLClassLoader(urls, this.getClass().getClassLoader());
+		this.loader = new URLClassLoader(urls, parent);
 	}
 
 	public Annotations getAnnotations(TypeComponent member) throws Exception {

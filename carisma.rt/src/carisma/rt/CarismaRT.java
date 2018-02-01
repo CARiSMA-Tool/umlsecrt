@@ -23,12 +23,12 @@ public class CarismaRT {
 	private Thread outThread = null;
 
 	// Class patterns for which we don't want events
-	private String[] excludes = new String[]{ "java.*", "javax.*", "sun.*", "com.sun.*", "jdk.*" };
+	private String[] excludes = new String[] { "java.*", "javax.*", "sun.*", "com.sun.*", "jdk.*" };
 
 	private Set<String> classpath = new HashSet<String>();
 
 	public static void main(String[] args) {
-		new CarismaRT(args).run();
+		new CarismaRT(args);
 	}
 
 	/**
@@ -43,7 +43,8 @@ public class CarismaRT {
 			}
 			if (arg.equals("-all")) {
 				excludes = new String[0];
-			} if (arg.equals("-help")) {
+			}
+			if (arg.equals("-help")) {
 				usage();
 				System.exit(0);
 			} else {
@@ -60,6 +61,7 @@ public class CarismaRT {
 		String[] strings = new String[args.length - inx];
 		System.arraycopy(args, inx, strings, 0, args.length);
 		vm = launchTarget(strings);
+		run();
 	}
 
 	/**
@@ -69,7 +71,7 @@ public class CarismaRT {
 	 */
 	void run() {
 		String[] restrictedPackages = java.security.Security.getProperty("package.access").split(",");
-		Set<String> allExcludes = new HashSet<>(restrictedPackages.length+excludes.length);
+		Set<String> allExcludes = new HashSet<>(restrictedPackages.length + excludes.length);
 		allExcludes.addAll(Arrays.asList(restrictedPackages));
 		allExcludes.addAll(Arrays.asList(excludes));
 		EventThread eventThread = new EventThread(vm, allExcludes, classpath);

@@ -14,10 +14,8 @@ public class Annotations {
 
 	private final Set<String> secrecy, integrity;
 	private final String memberSignature;
-	private final AccessibleObject member;
 
 	public Annotations(Class<?> reflectionClass, AccessibleObject reflectionMember) {
-		this.member = reflectionMember;
 		this.memberSignature = SignatureHelper.getSignature(reflectionMember);
 
 		Set<String> secrecy = new HashSet<>();
@@ -32,42 +30,61 @@ public class Annotations {
 		}
 
 		for (Annotation annotation : reflectionClass.getAnnotationsByType(Critical.class)) {
-			if (annotation instanceof Critical) {
-				Critical critical = (Critical) annotation;
-				for (String signature : critical.secrecy()) {
-					if (!signature.equals(memberSignature)) {
-						secrecy.add(SignatureHelper.normalize(signature));
-					}
-				}
-				for (String signature : critical.integrity()) {
-					if (!signature.equals(memberSignature)) {
-						integrity.add(SignatureHelper.normalize(signature));
-					}
+			Critical critical = (Critical) annotation;
+			for (String signature : critical.secrecy()) {
+				if (!signature.equals(memberSignature)) {
+					secrecy.add(normalize(signature));
 				}
 			}
+			for (String signature : critical.integrity()) {
+				if (!signature.equals(memberSignature)) {
+					integrity.add(normalize(signature));
+				}
+			}
+
 		}
 		this.secrecy = Collections.unmodifiableSet(secrecy);
 		this.integrity = Collections.unmodifiableSet(integrity);
 	}
 
-	public Set<String> getSecrecy() {
-		return secrecy;
+	public boolean hasSecrecy(String signature) {
+		for (String s : secrecy) {
+			if (equivalentSignatures(s, signature)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
-	public Set<String> getIntegrity() {
-		return integrity;
+	public boolean hasIntegrity(String signature) {
+		for (String i : integrity) {
+			if (equivalentSignatures(i, signature)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public String getMemberSignature() {
 		return memberSignature;
 	}
 
-	public AccessibleObject getMember() {
-		return member;
-	}
-
 	@Override
 	public String toString() {
 		return super.toString() + "(" + memberSignature + ": secrecy=" + secrecy + ", integrity=" + integrity + ")";
+	}
+
+	private static boolean equivalentSignatures(String rhs, String lhs) {
+		String tmpLhs = normalize(lhs);
+		String tmpRhs = normalize(rhs);
+		return tmpLhs.endsWith(tmpRhs) || tmpRhs.endsWith(tmpLhs);
+	}
+
+	private static String normalize(String signature) {
+		signature = signature.replace(" ", "");
+		if (signature.indexOf(':') < 0) {
+			return signature + ":void";
+		}
+		return signature;
 	}
 }

@@ -70,19 +70,5 @@ public class SignatureHelper {
 		}
 		builder.append(')');
 	}
-	
-	public static boolean equivalentSignatures(String rhs, String lhs) {
-		String tmpLhs = normalize(lhs);
-		String tmpRhs = normalize(rhs);
-		return tmpLhs.endsWith(tmpRhs) || tmpRhs.endsWith(tmpLhs);
-	}
-	
-	public static String normalize(String signature) {
-		signature = signature.replace(" ", "");
-		if (signature.indexOf(':') < 0) {
-			return signature + ":void";
-		}
-		return signature;
-	}
 
 }

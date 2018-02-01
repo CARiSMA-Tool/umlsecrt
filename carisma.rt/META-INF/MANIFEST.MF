@@ -5,5 +5,7 @@ Bundle-SymbolicName: carisma.rt
 Bundle-Version: 1.0.0.qualifier
 Bundle-ClassPath: lib/jvm/jdk1.8.0_141/lib/tools.jar
 Export-Package: carisma.rt
-Require-Bundle: org.gravity.security.annotations
+Require-Bundle: org.gravity.security.annotations,
+ org.junit,
+ CodeInjection
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
