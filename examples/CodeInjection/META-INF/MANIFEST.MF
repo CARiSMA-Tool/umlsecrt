@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: CodeInjection
+Bundle-SymbolicName: CodeInjection
+Bundle-Version: 1.0.0.qualifier
+Export-Package: example
+Require-Bundle: org.gravity.security.annotations
