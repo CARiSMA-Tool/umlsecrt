@@ -7,6 +7,5 @@ Bundle-ClassPath: lib/jvm/jdk1.8.0_141/lib/tools.jar
 Export-Package: carisma.rt
 Require-Bundle: org.gravity.security.annotations,
  org.junit,
- CodeInjection,
- JDI
+ CodeInjection
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
