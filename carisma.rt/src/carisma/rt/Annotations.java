@@ -4,19 +4,18 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import org.gravity.security.annotations.requirements.Critical;
 import org.gravity.security.annotations.requirements.Integrity;
 import org.gravity.security.annotations.requirements.Secrecy;
 
-public class Annotations {
+class Annotations {
 
 	private final Set<String> secrecy, integrity;
 	private final String memberSignature;
 
-	public Annotations(Class<?> reflectionClass, AccessibleObject reflectionMember) {
+	Annotations(Class<?> reflectionClass, AccessibleObject reflectionMember) {
 		this.memberSignature = SignatureHelper.getSignature(reflectionMember);
 
 		Set<String> secrecy = new HashSet<>();
