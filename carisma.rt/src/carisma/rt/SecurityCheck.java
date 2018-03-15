@@ -5,6 +5,7 @@ import com.sun.jdi.Method;
 import com.sun.jdi.TypeComponent;
 import com.sun.jdi.event.MethodEntryEvent;
 import com.sun.jdi.event.MethodExitEvent;
+import com.sun.tools.jdi.ConcreteMethodImpl;
 
 class SecurityCheck {
 

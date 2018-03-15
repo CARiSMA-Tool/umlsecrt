@@ -4,6 +4,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.gravity.security.annotations.requirements.Critical;
@@ -45,6 +46,12 @@ public class Annotations {
 		}
 		this.secrecy = Collections.unmodifiableSet(secrecy);
 		this.integrity = Collections.unmodifiableSet(integrity);
+	}
+
+	public Annotations(String memberSignature, Set<String> secrecy, Set<String> integrity) {
+		this.secrecy = secrecy;
+		this.integrity = integrity;
+		this.memberSignature = memberSignature;
 	}
 
 	public boolean hasSecrecy(String signature) {

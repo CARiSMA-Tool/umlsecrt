@@ -8,7 +8,7 @@ public class Tests {
 
 	@Test
 	public void codeInjection() {
-		CarismaRT.main(new String[] { "example.CodeInjection", "-cp", "/h../examples/CodeInjection/bin"});
+		CarismaRT.main(new String[] { "example.CodeInjection", "-cp", "../examples/CodeInjection/bin"});
 	}
 	
 	@Test
