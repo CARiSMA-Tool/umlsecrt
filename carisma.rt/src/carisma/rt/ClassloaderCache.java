@@ -32,6 +32,7 @@ import com.sun.jdi.ThreadReference;
 import com.sun.jdi.Type;
 import com.sun.jdi.TypeComponent;
 import com.sun.jdi.Value;
+import com.sun.tools.jdi.ArrayTypeImpl;
 
 class ClassloaderCache {
 
@@ -54,111 +55,117 @@ class ClassloaderCache {
 		}
 		this.loader = new URLClassLoader(urls, parent);
 	}
-
+//
+//	Annotations getAnnotations(TypeComponent member) throws Exception {
+//
+//		ThreadReference thread = null;
+//		for (ThreadReference t : member.virtualMachine().allThreads()) {
+//			if ("main".equals(t.name())) {
+//				thread = t;
+//			}
+//		}
+//
+//		// Value clazz = invokeMethod(thread, member.declaringType().classObject(),
+//		// "getClass");
+//		ClassObjectReference clazzReference = member.declaringType().classObject();
+//		
+//		List<Value> val = new ArrayList<Value>();
+//		StringReference valName = (StringReference) invokeMethod(thread, clazzReference, "getName");
+//		Value mirrorOf = clazzReference.virtualMachine().mirrorOf(valName.value().replace('.', '/')+".class");
+//		val.add(mirrorOf);
+//		
+//		invokeMethod(thread, clazzReference, "getResource", val);
+//		
+//		ArrayReference classAnnotations = (ArrayReference) invokeMethod(thread, clazzReference, "getDeclaredAnnotations");
+//
+//		ObjectReference o =  (ObjectReference) ((ArrayReference) invokeMethod(thread, clazzReference, "getDeclaredMethods")).getValue(0);
+//		List<Value> valueX=  new ArrayList<>(1);
+//		valueX.add(null);
+//		valueX.add(classAnnotations);
+//		Value x = invokeMethod(thread, o, "invoke", valueX);
+//		
+//		ObjectReference memberObject = null;		
+//		if (member instanceof Method) {
+//			ArrayReference declared;
+//			if (((Method) member).isConstructor()) {
+//				declared = (ArrayReference) invokeMethod(thread, clazzReference, "getDeclaredConstructors");
+//			} else {
+//				declared = (ArrayReference) invokeMethod(thread, clazzReference, "getDeclaredMethods");
+//				List<Value> toRemove = new LinkedList<>();
+//				for (Value value : declared.getValues()) {
+//					ObjectReference object = (ObjectReference) value;
+//					StringReference name = (StringReference) invokeMethod(thread, object, "getName");
+//					if (!member.name().equals(name.value())) {
+//						toRemove.add(value);
+//					}
+//				}
+//				declared.getValues().removeAll(toRemove);
+//			}
+//
+//			for (Value d : declared.getValues()) {
+//				ObjectReference objectReference = (ObjectReference) d;
+//				boolean match = true;
+//				List<String> searched = ((Method) member).argumentTypeNames();
+//				ArrayReference current = (ArrayReference) invokeMethod(thread, objectReference, "getParameterTypes");
+//				if (searched.size() == current.length()) {
+//					for (int i = 0; i < searched.size(); i++) {
+//						Value value = current.getValue(i);
+//						String name = null;
+//						if (value instanceof ClassObjectReference) {
+//							name = ((ClassObjectReference) value).reflectedType().name();
+//						}
+//						else {
+//							throw new RuntimeException();
+//						}
+//						
+//						if (!searched.get(i).equals(name)) {
+//							match = false;
+//							break;
+//						}
+//					}
+//					if (match) {
+//						memberObject = (ObjectReference) d;
+//						break;
+//					}
+//				}
+//
+//			}
+//		} else if (member instanceof Field) {
+//			Field field = (Field) member;
+//			ArrayReference declared = (ArrayReference) invokeMethod(thread, clazzReference, "getDeclaredFields");
+//			for (Value v : declared.getValues()) {
+//				ObjectReference object = (ObjectReference) v;
+//				StringReference name = (StringReference) invokeMethod(thread, object, "getName");
+//				if (member.name().equals(name.value())) {
+//					Value type = invokeMethod(thread, object, "getType");
+//					String typeName;
+//					if (type instanceof ClassObjectReference) {
+//						typeName = ((ClassObjectReference) type).reflectedType().name();
+//					} else {
+//						throw new RuntimeException();
+//					}
+//					if (field.typeName().equals(typeName)) {
+//						memberObject = object;
+//						break;
+//					}
+//				}
+//			}
+//		} else {
+//			throw new RuntimeException();
+//		}
+//		ArrayReference annotationReferences = (ArrayReference) invokeMethod(thread, memberObject,
+//				"getDeclaredAnnotations");
+//		
+//		Set<String> secrecy = new HashSet<>();
+//		Set<String> integrity = new HashSet<>();
+//		for(Value value : annotationReferences.getValues()) {
+//			System.out.println(value);
+//		}
+//
+//		return new Annotations(member.name(), secrecy, integrity, "");
+//	}
+//
 	Annotations getAnnotations(TypeComponent member) throws Exception {
-
-		ThreadReference thread = null;
-		for (ThreadReference t : member.virtualMachine().allThreads()) {
-			if ("main".equals(t.name())) {
-				thread = t;
-			}
-		}
-
-		// Value clazz = invokeMethod(thread, member.declaringType().classObject(),
-		// "getClass");
-		ClassObjectReference clazzReference = member.declaringType().classObject();
-		
-		List<Value> val = new ArrayList<Value>();
-		StringReference valName = (StringReference) invokeMethod(thread, clazzReference, "getName");
-		Value mirrorOf = clazzReference.virtualMachine().mirrorOf(valName.value().replace('.', '/')+".class");
-		val.add(mirrorOf);
-		
-		invokeMethod(thread, clazzReference, "getResource", val);
-		
-		ArrayReference classAnnotations = (ArrayReference) invokeMethod(thread, clazzReference, "getDeclaredAnnotations");
-
-		ObjectReference memberObject = null;
-		if (member instanceof Method) {
-			ArrayReference declared;
-			if (((Method) member).isConstructor()) {
-				declared = (ArrayReference) invokeMethod(thread, clazzReference, "getDeclaredConstructors");
-			} else {
-				declared = (ArrayReference) invokeMethod(thread, clazzReference, "getDeclaredMethods");
-				List<Value> toRemove = new LinkedList<>();
-				for (Value value : declared.getValues()) {
-					ObjectReference object = (ObjectReference) value;
-					StringReference name = (StringReference) invokeMethod(thread, object, "getName");
-					if (!member.name().equals(name.value())) {
-						toRemove.add(value);
-					}
-				}
-				declared.getValues().removeAll(toRemove);
-			}
-
-			for (Value d : declared.getValues()) {
-				ObjectReference objectReference = (ObjectReference) d;
-				boolean match = true;
-				List<String> searched = ((Method) member).argumentTypeNames();
-				ArrayReference current = (ArrayReference) invokeMethod(thread, objectReference, "getParameterTypes");
-				if (searched.size() == current.length()) {
-					for (int i = 0; i < searched.size(); i++) {
-						Value value = current.getValue(i);
-						String name = null;
-						if (value instanceof ClassObjectReference) {
-							name = ((ClassObjectReference) value).reflectedType().name();
-						}
-						else {
-							throw new RuntimeException();
-						}
-						
-						if (!searched.get(i).equals(name)) {
-							match = false;
-							break;
-						}
-					}
-					if (match) {
-						memberObject = (ObjectReference) d;
-						break;
-					}
-				}
-
-			}
-		} else if (member instanceof Field) {
-			Field field = (Field) member;
-			ArrayReference declared = (ArrayReference) invokeMethod(thread, clazzReference, "getDeclaredFields");
-			for (Value v : declared.getValues()) {
-				ObjectReference object = (ObjectReference) v;
-				StringReference name = (StringReference) invokeMethod(thread, object, "getName");
-				if (member.name().equals(name.value())) {
-					Value type = invokeMethod(thread, object, "getType");
-					String typeName;
-					if (type instanceof ClassObjectReference) {
-						typeName = ((ClassObjectReference) type).reflectedType().name();
-					} else {
-						throw new RuntimeException();
-					}
-					if (field.typeName().equals(typeName)) {
-						memberObject = object;
-						break;
-					}
-				}
-			}
-		} else {
-			throw new RuntimeException();
-		}
-		ArrayReference annotationReferences = (ArrayReference) invokeMethod(thread, memberObject,
-				"getDeclaredAnnotations");
-		
-		Set<String> secrecy = new HashSet<>();
-		Set<String> integrity = new HashSet<>();
-		for(Value value : annotationReferences.getValues()) {
-			System.out.println(value);
-		}
-
-		return new Annotations(member.name(), secrecy, integrity);
-	}
-
-	Annotations getAnnotationsOld(TypeComponent member) throws Exception {
 		String memberSignature = member.toString();
 		if (memberAnnotations.contains(memberSignature)) {
 			return memberAnnotations.get(memberSignature);
@@ -217,7 +224,8 @@ class ClassloaderCache {
 			List<String> current = m.argumentTypeNames();
 			if (parameters.size() == current.size()) {
 				for (int i = 0; i < parameters.size(); i++) {
-					if (!current.get(i).equals(parameters.get(i).type().name())) {
+					Value value = parameters.get(i);
+					if (!current.get(i).equals(value == null? "java.lang.Object" : value.type().name())) {
 						match = false;
 						break;
 					}

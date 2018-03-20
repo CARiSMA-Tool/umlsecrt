@@ -8,12 +8,15 @@ import java.util.*;
 
 class EventThread extends Thread {
 
-	final VirtualMachine vm;
+	private final VirtualMachine vm;
 	private final Set<String> excludes;
 
 	private Map<ThreadReference, SecurityCheck> traceMap = new HashMap<>();
+	private Set<EventRequest> eventRequests = new HashSet<>();
 	private final ClassloaderCache cache;
-
+	
+	
+	
 	EventThread(VirtualMachine vm, Set<String> excludes, Set<String> classpath) {
 		super("event-handler");
 		this.vm = vm;
@@ -121,5 +124,9 @@ class EventThread extends Thread {
 			}
 
 		}
+	}
+	
+	public void enableEventRequests() {
+		
 	}
 }

@@ -14,6 +14,7 @@ class Annotations {
 
 	private final Set<String> secrecy, integrity;
 	private final String memberSignature;
+	private String earlyReturn;
 
 	Annotations(Class<?> reflectionClass, AccessibleObject reflectionMember) {
 		this.memberSignature = SignatureHelper.getSignature(reflectionMember);
@@ -24,8 +25,10 @@ class Annotations {
 		for (Annotation annotation : reflectionMember.getDeclaredAnnotations()) {
 			if (annotation instanceof Secrecy) {
 				secrecy.add(memberSignature);
+				this.earlyReturn = ((Secrecy) annotation).earlyReturn();
 			} else if (annotation instanceof Integrity) {
 				integrity.add(memberSignature);
+				earlyReturn = ((Integrity) annotation).earlyReturn();
 			}
 		}
 
@@ -47,10 +50,11 @@ class Annotations {
 		this.integrity = Collections.unmodifiableSet(integrity);
 	}
 
-	public Annotations(String memberSignature, Set<String> secrecy, Set<String> integrity) {
+	public Annotations(String memberSignature, Set<String> secrecy, Set<String> integrity, String earlyReturn) {
 		this.secrecy = secrecy;
 		this.integrity = integrity;
 		this.memberSignature = memberSignature;
+		this.earlyReturn = earlyReturn;
 	}
 
 	public boolean hasSecrecy(String signature) {
@@ -73,6 +77,10 @@ class Annotations {
 
 	public String getMemberSignature() {
 		return memberSignature;
+	}
+
+	public String getEarlyReturn() {
+		return earlyReturn;
 	}
 
 	@Override
