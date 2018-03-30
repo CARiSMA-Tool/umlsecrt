@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         id="org.gravity.carisma.rt.markers"
+         name="CARiSMA@Runtime Early Return Error"
+         point="org.eclipse.core.resources.markers">
+      <super
+            type="org.eclipse.core.resources.problemmarker">
+      </super>
+      <persistent
+            value="true">
+      </persistent>
+      <super
+            type="org.eclipse.core.resources.textmarker">
+      </super>
+   </extension>
+   <extension
+         point="org.eclipse.jdt.core.compilationParticipant">
+      <compilationParticipant
+            class="carisma.rt.editor.CompilationParticipant"
+            createsProblems="true"
+            id="carisma.rt.editor.compilationParticipant"
+            modifiesEnvironment="false">
+         <managedMarker
+               markerType="org.gravity.carisma.rt.markers">
+         </managedMarker>
+      </compilationParticipant>
+   </extension>
+
+</plugin>
