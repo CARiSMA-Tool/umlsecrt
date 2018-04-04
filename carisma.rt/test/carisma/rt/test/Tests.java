@@ -15,4 +15,9 @@ public class Tests {
 	public void javaReflection() {
 		CarismaRT.main(new String[] {"example.A", "-cp", "../examples/JavaReflection/bin"});
 	}
+
+	@Test
+	public void javaReflectionFieldAccess() {
+		CarismaRT.main(new String[] {"example.A2", "-cp", "../examples/JavaReflection/bin"});
+	}
 }

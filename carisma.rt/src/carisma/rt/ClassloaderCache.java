@@ -4,20 +4,13 @@ import java.io.File;
 import java.lang.reflect.AccessibleObject;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLClassLoader;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-import javax.management.RuntimeErrorException;
-
 import com.sun.jdi.ArrayReference;
-import com.sun.jdi.ArrayType;
+import com.sun.jdi.ClassLoaderReference;
 import com.sun.jdi.ClassNotLoadedException;
 import com.sun.jdi.ClassObjectReference;
 import com.sun.jdi.Field;
@@ -26,13 +19,11 @@ import com.sun.jdi.InvalidTypeException;
 import com.sun.jdi.InvocationException;
 import com.sun.jdi.Method;
 import com.sun.jdi.ObjectReference;
-import com.sun.jdi.ReferenceType;
 import com.sun.jdi.StringReference;
 import com.sun.jdi.ThreadReference;
 import com.sun.jdi.Type;
 import com.sun.jdi.TypeComponent;
 import com.sun.jdi.Value;
-import com.sun.tools.jdi.ArrayTypeImpl;
 
 class ClassloaderCache {
 
@@ -41,9 +32,11 @@ class ClassloaderCache {
 	private Hashtable<String, Annotations> memberAnnotations = new Hashtable<>();
 	private Hashtable<String, Annotations> clazzAnnotations = new Hashtable<>();
 
-	private final ClassLoader loader;
+	private final ModifiableURLClassLoader loader;
 
-	ClassloaderCache(Set<String> classpath, ClassLoader parent) {
+	private final EventThread events;
+
+	ClassloaderCache(Set<String> classpath, ClassLoader parent, EventThread events) {
 		int i = 0;
 		URL[] urls = new URL[classpath.size()];
 		for (String entry : classpath) {
@@ -53,44 +46,27 @@ class ClassloaderCache {
 				e.printStackTrace();
 			}
 		}
-		this.loader = new URLClassLoader(urls, parent);
+		this.loader = new ModifiableURLClassLoader(urls, parent) ;
+		this.events = events;
 	}
 //
-//	Annotations getAnnotations(TypeComponent member) throws Exception {
+//	Annotations getAnnotationsNew(TypeComponent member, ObjectReference clazzReference, ThreadReference thread) throws Exception {
 //
-//		ThreadReference thread = null;
-//		for (ThreadReference t : member.virtualMachine().allThreads()) {
-//			if ("main".equals(t.name())) {
-//				thread = t;
-//			}
+//		ClassObjectReference classObjectReference;
+//		if(clazzReference instanceof ClassObjectReference) {
+//			classObjectReference = (ClassObjectReference) clazzReference;
 //		}
-//
-//		// Value clazz = invokeMethod(thread, member.declaringType().classObject(),
-//		// "getClass");
-//		ClassObjectReference clazzReference = member.declaringType().classObject();
+//		else {
+//			classObjectReference = clazzReference.referenceType().classObject();
+//		}
 //		
-//		List<Value> val = new ArrayList<Value>();
-//		StringReference valName = (StringReference) invokeMethod(thread, clazzReference, "getName");
-//		Value mirrorOf = clazzReference.virtualMachine().mirrorOf(valName.value().replace('.', '/')+".class");
-//		val.add(mirrorOf);
-//		
-//		invokeMethod(thread, clazzReference, "getResource", val);
-//		
-//		ArrayReference classAnnotations = (ArrayReference) invokeMethod(thread, clazzReference, "getDeclaredAnnotations");
-//
-//		ObjectReference o =  (ObjectReference) ((ArrayReference) invokeMethod(thread, clazzReference, "getDeclaredMethods")).getValue(0);
-//		List<Value> valueX=  new ArrayList<>(1);
-//		valueX.add(null);
-//		valueX.add(classAnnotations);
-//		Value x = invokeMethod(thread, o, "invoke", valueX);
-//		
-//		ObjectReference memberObject = null;		
+//		ObjectReference memberObject = null;
 //		if (member instanceof Method) {
 //			ArrayReference declared;
 //			if (((Method) member).isConstructor()) {
-//				declared = (ArrayReference) invokeMethod(thread, clazzReference, "getDeclaredConstructors");
+//				declared = (ArrayReference) invokeMethod(thread, classObjectReference, "getDeclaredConstructors");
 //			} else {
-//				declared = (ArrayReference) invokeMethod(thread, clazzReference, "getDeclaredMethods");
+//				declared = (ArrayReference) invokeMethod(thread, classObjectReference, "getDeclaredMethods");
 //				List<Value> toRemove = new LinkedList<>();
 //				for (Value value : declared.getValues()) {
 //					ObjectReference object = (ObjectReference) value;
@@ -113,11 +89,10 @@ class ClassloaderCache {
 //						String name = null;
 //						if (value instanceof ClassObjectReference) {
 //							name = ((ClassObjectReference) value).reflectedType().name();
-//						}
-//						else {
+//						} else {
 //							throw new RuntimeException();
 //						}
-//						
+//
 //						if (!searched.get(i).equals(name)) {
 //							match = false;
 //							break;
@@ -132,7 +107,7 @@ class ClassloaderCache {
 //			}
 //		} else if (member instanceof Field) {
 //			Field field = (Field) member;
-//			ArrayReference declared = (ArrayReference) invokeMethod(thread, clazzReference, "getDeclaredFields");
+//			ArrayReference declared = (ArrayReference) invokeMethod(thread, classObjectReference, "getDeclaredFields");
 //			for (Value v : declared.getValues()) {
 //				ObjectReference object = (ObjectReference) v;
 //				StringReference name = (StringReference) invokeMethod(thread, object, "getName");
@@ -155,20 +130,34 @@ class ClassloaderCache {
 //		}
 //		ArrayReference annotationReferences = (ArrayReference) invokeMethod(thread, memberObject,
 //				"getDeclaredAnnotations");
-//		
+//
 //		Set<String> secrecy = new HashSet<>();
 //		Set<String> integrity = new HashSet<>();
-//		for(Value value : annotationReferences.getValues()) {
+//		for (Value value : annotationReferences.getValues()) {
 //			System.out.println(value);
 //		}
 //
 //		return new Annotations(member.name(), secrecy, integrity, "");
 //	}
 //
-	Annotations getAnnotations(TypeComponent member) throws Exception {
+	Annotations getAnnotations(TypeComponent member, ObjectReference thisObject, ThreadReference thread) throws Exception {
 		String memberSignature = member.toString();
 		if (memberAnnotations.contains(memberSignature)) {
 			return memberAnnotations.get(memberSignature);
+		}
+		
+		ClassLoaderReference classLoaderReference;
+		if (thisObject instanceof ClassObjectReference) {
+			classLoaderReference = ((ClassObjectReference) thisObject).reflectedType().classLoader();		
+		}
+		else {
+			classLoaderReference = thisObject.referenceType().classLoader();
+		}
+		
+		ArrayReference urls = (ArrayReference) invokeMethod(thread, classLoaderReference, "getURLs");
+		for(Value value : urls.getValues()) {
+			StringReference path = (StringReference) invokeMethod(thread, (ObjectReference) value , "getPath");
+			loader.addURL(new File(path.value()).toURI().toURL());
 		}
 
 		String classSignature = SignatureHelper.getSignature(member.declaringType());
@@ -218,26 +207,33 @@ class ClassloaderCache {
 	private Value invokeMethod(ThreadReference thread, ObjectReference object, String methodName,
 			List<? extends Value> parameters) throws InvalidTypeException, ClassNotLoadedException,
 			IncompatibleThreadStateException, InvocationException {
+		
+		events.disableEventRequests();
+		
 		Method method = null;
-		for (Method m : object.referenceType().methodsByName(methodName)) {
-			boolean match = true;
-			List<String> current = m.argumentTypeNames();
-			if (parameters.size() == current.size()) {
-				for (int i = 0; i < parameters.size(); i++) {
-					Value value = parameters.get(i);
-					if (!current.get(i).equals(value == null? "java.lang.Object" : value.type().name())) {
-						match = false;
+		for (Method m : object.referenceType().allMethods()) {
+			if (methodName.equals(m.name())) {
+				boolean match = true;
+				List<String> current = m.argumentTypeNames();
+				if (parameters.size() == current.size()) {
+					for (int i = 0; i < parameters.size(); i++) {
+						Value value = parameters.get(i);
+						if (!current.get(i).equals(value == null ? "java.lang.Object" : value.type().name())) {
+							match = false;
+							break;
+						}
+					}
+					if (match) {
+						method = m;
 						break;
 					}
-				}
-				if (match) {
-					method = m;
-					break;
 				}
 			}
 		}
 		Value returnValue = object.invokeMethod(thread, method, parameters, 0);
 
+		events.enableEventRequests();
+		
 		return returnValue;
 	}
 

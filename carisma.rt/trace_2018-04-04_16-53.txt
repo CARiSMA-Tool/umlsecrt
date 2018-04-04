@@ -1,0 +1,2 @@
+example.ProtectedClass.getText()
+--text:java.lang.String <---- Violation of SecureDependencies

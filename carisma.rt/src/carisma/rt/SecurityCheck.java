@@ -1,40 +1,77 @@
 package carisma.rt;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Stack;
 
 import com.sun.jdi.AbsentInformationException;
 import com.sun.jdi.ClassNotLoadedException;
+import com.sun.jdi.Field;
 import com.sun.jdi.IncompatibleThreadStateException;
 import com.sun.jdi.InvalidTypeException;
 import com.sun.jdi.InvocationException;
 import com.sun.jdi.Method;
 import com.sun.jdi.ObjectReference;
-import com.sun.jdi.ReferenceType;
+import com.sun.jdi.ThreadReference;
 import com.sun.jdi.TypeComponent;
 import com.sun.jdi.Value;
 import com.sun.jdi.VirtualMachine;
 import com.sun.jdi.VoidType;
 import com.sun.jdi.event.MethodEntryEvent;
 import com.sun.jdi.event.MethodExitEvent;
+import com.sun.jdi.event.WatchpointEvent;
 
 class SecurityCheck {
 
 	private final Stack<TypeComponent> stack;
 	private final ClassloaderCache cache;
+	private final EventThread events;
+	
+	private boolean record = false;
+	private final String trace;
+	private String intend = "";
 
-	SecurityCheck(ClassloaderCache cache) {
+	SecurityCheck(ClassloaderCache cache, EventThread events, String traceLocation) {
 		this.stack = new Stack<TypeComponent>();
 		this.cache = cache;
+		this.events = events;
+		this.trace = traceLocation;
+	}
+
+	private void enableTraceRecord(TypeComponent caller, TypeComponent called) {
+		record = true;
+		try(FileWriter writer = new FileWriter(trace)){
+			writer.append(SignatureHelper.getSignature(caller));
+			writer.append(System.lineSeparator());
+			writer.append("--");
+			writer.append(SignatureHelper.getSignature(called));
+			writer.append(" <---- Violation of SecureDependencies");
+			writer.append(System.lineSeparator());
+			intend = "----";
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	void methodEntryEvent(MethodEntryEvent event) {
 		Method method = event.method();
+		if(record) {
+			try(FileWriter writer = new FileWriter(trace, true)){
+				writer.append(intend);
+				writer.append(SignatureHelper.getSignature(method));
+				writer.append(System.lineSeparator());
+				intend += "--";
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 		stack.add(method);
 		if (stack.size() < 2) {
 			return;
 		}
-		if (!checkSecureDependencies(method)) {
+		ThreadReference thread = event.thread();
+		if (!checkSecureDependencies(method, thread)) {
 			try {
 				if (method.returnType() instanceof VoidType) {
 					System.exit(-1);
@@ -42,66 +79,16 @@ class SecurityCheck {
 			} catch (ClassNotLoadedException e) {
 				throw new RuntimeException(e);
 			}
-			String earlyReturn;
-			try {
-				earlyReturn = cache.getAnnotations(method).getEarlyReturn().trim();
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
+			String earlyReturn = getEarlyReturnValue(method, thread);
 			if (earlyReturn.length() == 0) {
 				System.exit(-1);
 			} else {
 				try {
-					Value value;
-					if ("null".equals(earlyReturn.toLowerCase())) {
-						value = null;
-					} else {
-						VirtualMachine virtualMachine = event.virtualMachine();
-						if ("void".equals(earlyReturn.toLowerCase())) {
-							value = virtualMachine.mirrorOfVoid();
-						} else if ("true".equals(earlyReturn.toLowerCase())) {
-							value = virtualMachine.mirrorOf(true);
-						} else if ("false".equals(earlyReturn.toLowerCase())) {
-							value = virtualMachine.mirrorOf(false);
-						} else if ('"' == earlyReturn.charAt(0) && earlyReturn.charAt(earlyReturn.length() - 1) == '"') {
-							value = virtualMachine.mirrorOf(earlyReturn.substring(1, earlyReturn.length() - 1));
-						} else {
-							try {
-								int i = Integer.parseInt(earlyReturn);
-								value = virtualMachine.mirrorOf(i);
-							} catch (NumberFormatException e0) {
-								try {
-									double d = Double.parseDouble(earlyReturn);
-									value = virtualMachine.mirrorOf(d);
-								} catch (NumberFormatException e1) {
-									Method toCall = null;
-									for(Method m : method.declaringType().methodsByName(earlyReturn)) {
-										try {
-											if(m.arguments().size() == 0) {
-												toCall = m;
-												break;
-											}
-										} catch (AbsentInformationException e) {
-											e.printStackTrace();
-										}
-									}
-									if(toCall != null) {
-										try {
-											System.out.println("Get early return from method \""+earlyReturn+"\"");
-											value = event.thread().frame(0).thisObject().invokeMethod(event.thread(), toCall, Collections.emptyList(),ObjectReference.INVOKE_SINGLE_THREADED);
-											System.out.println("Done");
-										} catch (InvocationException e) {
-											throw new RuntimeException(e);
-										}
-									}
-									else {
-										throw new RuntimeException();
-									}
-								}
-							}
-						}
-					}
-					event.thread().forceEarlyReturn(value);
+					Value value = getCounterMeasureValue(method, thread, earlyReturn);
+					events.disableEventRequests();
+					thread.forceEarlyReturn(value);
+					System.out.println("Forced early return of \""+SignatureHelper.getSignature(method)+"\" with the value \""+value+"\".");
+					events.enableEventRequests();
 				} catch (InvalidTypeException | ClassNotLoadedException | IncompatibleThreadStateException e) {
 					e.printStackTrace();
 				}
@@ -111,22 +98,82 @@ class SecurityCheck {
 
 	void methodExitEvent(MethodExitEvent event) {
 		stack.pop();
-	}
-
-	void fieldEvent(TypeComponent field) {
-		System.out.println(SignatureHelper.getSignature(field));
-		if (!checkSecureDependencies(field)) {
-			System.exit(-1);
+		if(record && intend.length() >= 2) {
+			intend = intend.substring(2);
 		}
 	}
 
-	private boolean checkSecureDependencies(TypeComponent member) {
-		try {
-			Annotations annotations = cache.getAnnotations(member);
-			TypeComponent caller = stack.get(stack.size() - 2);
-			Annotations callerAnnotations = cache.getAnnotations(caller);
+	void fieldEvent(WatchpointEvent event) {
+		ThreadReference thread = event.thread();
+		Field field = event.field();
+		if(record) {
+			try(FileWriter writer = new FileWriter(trace, true)){
+				writer.append(intend);
+				writer.append(SignatureHelper.getSignature(field));
+				writer.append(System.lineSeparator());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		stack.add(field);
+		if (stack.size() < 2) {
+			return;
+		}
+		if (!checkSecureDependencies(field, thread)) {
+			String earlyReturn = getEarlyReturnValue(field, thread);
+			if (earlyReturn.length() == 0) {
+				System.exit(-1);
+			} else {
+				try {
+					Value value = getCounterMeasureValue(field, thread, earlyReturn);
+					event.object().setValue(field, value);
+				} catch (InvalidTypeException | ClassNotLoadedException | IncompatibleThreadStateException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		stack.pop();
+	}
 
-			return checkSecureDependencies(callerAnnotations, annotations);
+	private boolean checkSecureDependencies(TypeComponent member, ThreadReference thread) {
+		if(!thread.isSuspended()) {
+			thread.suspend();
+		}
+		try {
+			ObjectReference thisObject;
+			if (member instanceof Field) {
+				thisObject = member.declaringType().classObject();
+			} else {
+				thisObject = thread.frame(0).thisObject();
+				if (thisObject == null) {
+					thisObject = member.declaringType().classObject();
+				}
+
+			}
+			Annotations annotations = cache.getAnnotations(member, thisObject, thread);
+			TypeComponent caller = stack.get(stack.size() - 2);
+			ObjectReference callerObject;
+			if (caller.declaringType().equals(member.declaringType())) {
+				callerObject = thisObject;
+			} else {
+				if (member instanceof Field) {
+					callerObject = thread.frame(0).thisObject();
+				} else {
+					callerObject = thread.frame(1).thisObject();
+				}
+				if (callerObject == null) {
+					callerObject = caller.declaringType().classObject();
+				}
+			}
+			Annotations callerAnnotations = cache.getAnnotations(caller, callerObject, thread);
+
+			boolean results = checkSecureDependencies(callerAnnotations, annotations);
+			if(!results) {
+				enableTraceRecord(caller, member);
+			}
+			return results;
+		} catch (IncompatibleThreadStateException e) {
+			e.printStackTrace();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -166,6 +213,77 @@ class SecurityCheck {
 			return false;
 		}
 		return true;
+	}
+
+	private Value getCounterMeasureValue(TypeComponent member, ThreadReference thread, String earlyReturn)
+			throws IncompatibleThreadStateException, InvalidTypeException, ClassNotLoadedException {
+		Value value;
+		if ("null".equals(earlyReturn.toLowerCase())) {
+			value = null;
+		} else {
+			VirtualMachine virtualMachine = member.virtualMachine();
+			if ("void".equals(earlyReturn.toLowerCase())) {
+				value = virtualMachine.mirrorOfVoid();
+			} else if ("true".equals(earlyReturn.toLowerCase())) {
+				value = virtualMachine.mirrorOf(true);
+			} else if ("false".equals(earlyReturn.toLowerCase())) {
+				value = virtualMachine.mirrorOf(false);
+			} else if ('"' == earlyReturn.charAt(0) && earlyReturn.charAt(earlyReturn.length() - 1) == '"') {
+				value = virtualMachine.mirrorOf(earlyReturn.substring(1, earlyReturn.length() - 1));
+			} else {
+				try {
+					int i = Integer.parseInt(earlyReturn);
+					value = virtualMachine.mirrorOf(i);
+				} catch (NumberFormatException e0) {
+					try {
+						double d = Double.parseDouble(earlyReturn);
+						value = virtualMachine.mirrorOf(d);
+					} catch (NumberFormatException e1) {
+						Method toCall = null;
+						for (Method m : member.declaringType().methodsByName(earlyReturn)) {
+							try {
+								if (m.arguments().size() == 0) {
+									toCall = m;
+									break;
+								}
+							} catch (AbsentInformationException e) {
+								e.printStackTrace();
+							}
+						}
+						if (toCall != null) {
+							try {
+								events.disableEventRequests();
+								ObjectReference thisObject = thread.frame(0).thisObject();
+								value = thisObject.invokeMethod(thread, toCall, Collections.emptyList(), ObjectReference.INVOKE_NONVIRTUAL);
+								events.enableEventRequests();
+								System.out.println("Got early return from method \"" + earlyReturn + "\": "+value);
+							} catch (InvocationException e) {
+								throw new RuntimeException(e);
+							}
+						} else {
+							throw new RuntimeException();
+						}
+					}
+				}
+			}
+		}
+		return value;
+	}
+
+	private String getEarlyReturnValue(TypeComponent member, ThreadReference thread) {
+		String earlyReturn;
+		try {
+			ObjectReference thisObject;
+			if (member instanceof Field) {
+				thisObject = member.declaringType().classObject();
+			} else {
+				thisObject = thread.frame(0).thisObject();
+			}
+			earlyReturn = cache.getAnnotations(member, thisObject, thread).getEarlyReturn().trim();
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+		return earlyReturn;
 	}
 
 }

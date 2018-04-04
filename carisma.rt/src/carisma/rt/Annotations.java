@@ -14,7 +14,7 @@ class Annotations {
 
 	private final Set<String> secrecy, integrity;
 	private final String memberSignature;
-	private String earlyReturn;
+	private String earlyReturn = "";
 
 	Annotations(Class<?> reflectionClass, AccessibleObject reflectionMember) {
 		this.memberSignature = SignatureHelper.getSignature(reflectionMember);
