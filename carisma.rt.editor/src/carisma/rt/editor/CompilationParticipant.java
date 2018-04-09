@@ -160,6 +160,9 @@ public class CompilationParticipant extends org.eclipse.jdt.core.compiler.Compil
 															if (superclassTypeSignature != null) {
 																returnTypes.add(superclassTypeSignature);
 															}
+															else {
+																returnTypes.add("Ljava.lang.Object;");
+															}
 															for (String interfaceSignature : returnType
 																	.getSuperInterfaceTypeSignatures()) {
 																returnTypes.add(interfaceSignature);
