@@ -3,16 +3,20 @@ package carisma.rt;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Parameter;
 
+import com.sun.jdi.ClassNotLoadedException;
 import com.sun.jdi.Field;
 import com.sun.jdi.Method;
 import com.sun.jdi.PrimitiveType;
 import com.sun.jdi.Type;
 import com.sun.jdi.TypeComponent;
+import com.sun.tools.jdi.ConcreteMethodImpl;
+
+import sun.tools.javac.SourceMember;
 
 public class SignatureHelper {
 
 	public static String getSignature(Type declaringType) {
-		if(declaringType instanceof PrimitiveType) {
+		if (declaringType instanceof PrimitiveType) {
 			return declaringType.name();
 		}
 		String signature = declaringType.signature();
@@ -22,7 +26,12 @@ public class SignatureHelper {
 
 	public static String getSignature(TypeComponent caller) {
 		if (caller instanceof Method) {
-			return caller.toString();
+			String string = caller.toString();
+			if (caller instanceof ConcreteMethodImpl) {
+				String returnTypeName = ((ConcreteMethodImpl) caller).returnTypeName();
+				string += ':' + returnTypeName.substring(returnTypeName.lastIndexOf('.')+1);
+			}
+			return string;
 		} else if (caller instanceof Field) {
 			return caller.name() + ':' + ((Field) caller).typeName();
 		}

@@ -1,7 +1,6 @@
 package carisma.rt;
 
 import java.io.File;
-import java.lang.reflect.AccessibleObject;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Collections;
@@ -13,24 +12,20 @@ import com.sun.jdi.ArrayReference;
 import com.sun.jdi.ClassLoaderReference;
 import com.sun.jdi.ClassNotLoadedException;
 import com.sun.jdi.ClassObjectReference;
-import com.sun.jdi.Field;
 import com.sun.jdi.IncompatibleThreadStateException;
 import com.sun.jdi.InvalidTypeException;
 import com.sun.jdi.InvocationException;
 import com.sun.jdi.Method;
 import com.sun.jdi.ObjectReference;
+import com.sun.jdi.ReferenceType;
 import com.sun.jdi.StringReference;
 import com.sun.jdi.ThreadReference;
-import com.sun.jdi.Type;
 import com.sun.jdi.TypeComponent;
 import com.sun.jdi.Value;
-
 class ClassloaderCache {
 
-	private Hashtable<String, Class<?>> classes = new Hashtable<>();
-
-	private Hashtable<String, Annotations> memberAnnotations = new Hashtable<>();
-	private Hashtable<String, Annotations> clazzAnnotations = new Hashtable<>();
+	private Hashtable<ReferenceType, Class<?>> classes = new Hashtable<>();
+	private Hashtable<Class<?>, Annotations> clazzAnnotations = new Hashtable<>();
 
 	private final ModifiableURLClassLoader loader;
 
@@ -140,58 +135,21 @@ class ClassloaderCache {
 //		return new Annotations(member.name(), secrecy, integrity, "");
 //	}
 //
-	Annotations getAnnotations(TypeComponent member, ObjectReference thisObject, ThreadReference thread) throws Exception {
-		String memberSignature = member.toString();
-		if (memberAnnotations.contains(memberSignature)) {
-			return memberAnnotations.get(memberSignature);
-		}
-		
-		ClassLoaderReference classLoaderReference;
-		if (thisObject instanceof ClassObjectReference) {
-			classLoaderReference = ((ClassObjectReference) thisObject).reflectedType().classLoader();		
-		}
-		else {
-			classLoaderReference = thisObject.referenceType().classLoader();
-		}
-		
-		ArrayReference urls = (ArrayReference) invokeMethod(thread, classLoaderReference, "getURLs");
+	Annotations getAnnotations(ReferenceType type, ThreadReference thread) throws Exception {
+		ArrayReference urls = (ArrayReference) invokeMethod(thread, type.classLoader(), "getURLs");
 		for(Value value : urls.getValues()) {
 			StringReference path = (StringReference) invokeMethod(thread, (ObjectReference) value , "getPath");
 			loader.addURL(new File(path.value()).toURI().toURL());
 		}
 
-		String classSignature = SignatureHelper.getSignature(member.declaringType());
-		Class<?> reflectionClass = loadClass(classSignature);
-
-		AccessibleObject reflectionMember = null;
-		if (member instanceof Method) {
-			List<Type> argumentTypes = ((Method) member).argumentTypes();
-			Class<?>[] parameters = new Class<?>[argumentTypes.size()];
-			for (int i = 0; i < argumentTypes.size(); i++) {
-				Type parameter = argumentTypes.get(i);
-				parameters[i] = loadClass(SignatureHelper.getSignature(parameter));
-
-			}
-			if (((Method) member).isConstructor()) {
-				reflectionMember = reflectionClass.getConstructor(parameters);
-			} else {
-				try {
-					reflectionMember = reflectionClass.getDeclaredMethod(member.name(), parameters);
-				} catch (Exception e) {
-					reflectionMember = reflectionClass.getMethod(member.name(), parameters);
-				}
-			}
-
-		} else if (member instanceof Field) {
-			try {
-				reflectionMember = reflectionClass.getDeclaredField(member.name());
-			} catch (Exception e) {
-				reflectionMember = reflectionClass.getField(member.name());
-			}
+		Class<?> reflectionClass = loadClass(type);
+		
+		if(clazzAnnotations.containsKey(reflectionClass)) {
+			return clazzAnnotations.get(reflectionClass);
 		}
 
-		Annotations annotations = new Annotations(reflectionClass, reflectionMember);
-		clazzAnnotations.put(classSignature, annotations);
+		Annotations annotations = new Annotations(reflectionClass);
+		clazzAnnotations.put(reflectionClass, annotations);
 		return annotations;
 	}
 
@@ -237,19 +195,20 @@ class ClassloaderCache {
 		return returnValue;
 	}
 
-	private Class<?> loadClass(String signature) throws ClassNotFoundException {
+	private Class<?> loadClass(ReferenceType referenceType) throws ClassNotFoundException {
+		String classSignature = SignatureHelper.getSignature(referenceType);
 		Class<?> reflectionClass;
-		if (classes.containsKey(signature)) {
-			reflectionClass = classes.get(signature);
+		if (classes.containsKey(referenceType)) {
+			reflectionClass = classes.get(referenceType);
 		} else {
-			if (signature.startsWith("[")) {
-				reflectionClass = Class.forName(signature, true, loader);
-			} else if (signature.endsWith(";")) {
-				reflectionClass = loader.loadClass(signature.substring(1, signature.length() - 1));
+			if (classSignature.startsWith("[")) {
+				reflectionClass = Class.forName(classSignature, true, loader);
+			} else if (classSignature.endsWith(";")) {
+				reflectionClass = loader.loadClass(classSignature.substring(1, classSignature.length() - 1));
 			} else {
-				reflectionClass = getPrimitive(signature);
+				reflectionClass = getPrimitive(classSignature);
 			}
-			classes.put(signature, reflectionClass);
+			classes.put(referenceType, reflectionClass);
 		}
 		return reflectionClass;
 	}
@@ -276,5 +235,22 @@ class ClassloaderCache {
 			return void.class;
 		}
 		return null;
+	}
+	public String getEarlyReturn(TypeComponent member, ThreadReference thread) throws Exception {
+		Class<?> referenceType;
+		if(classes.containsKey(member.declaringType())) {
+			referenceType =  classes.get(member.declaringType());
+		}
+		else {
+			referenceType = loadClass(member.declaringType());
+		}
+		if(clazzAnnotations.containsKey(referenceType)) {
+			return clazzAnnotations.get(referenceType).getEarlyReturn(SignatureHelper.getSignature(member));
+		}
+		else {
+			Annotations annotations = getAnnotations(member.declaringType(), thread);
+			clazzAnnotations.put(referenceType, annotations);
+			return annotations.getEarlyReturn(SignatureHelper.getSignature(member));
+		}
 	}
 }

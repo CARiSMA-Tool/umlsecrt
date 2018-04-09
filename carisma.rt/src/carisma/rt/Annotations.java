@@ -4,6 +4,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.Set;
 
 import org.gravity.security.annotations.requirements.Critical;
@@ -13,36 +14,26 @@ import org.gravity.security.annotations.requirements.Secrecy;
 class Annotations {
 
 	private final Set<String> secrecy, integrity;
-	private final String memberSignature;
-	private String earlyReturn = "";
+	private final Class<?> clazz;
+	private final Hashtable<String, String> earlyReturns = new Hashtable<>();
 
-	Annotations(Class<?> reflectionClass, AccessibleObject reflectionMember) {
-		this.memberSignature = SignatureHelper.getSignature(reflectionMember);
-
+	Annotations(Class<?> reflectionClass) {
+		this.clazz = reflectionClass;
+		
 		Set<String> secrecy = new HashSet<>();
 		Set<String> integrity = new HashSet<>();
 
-		for (Annotation annotation : reflectionMember.getDeclaredAnnotations()) {
-			if (annotation instanceof Secrecy) {
-				secrecy.add(memberSignature);
-				this.earlyReturn = ((Secrecy) annotation).earlyReturn();
-			} else if (annotation instanceof Integrity) {
-				integrity.add(memberSignature);
-				earlyReturn = ((Integrity) annotation).earlyReturn();
-			}
-		}
+		getAnnotations(secrecy, integrity, clazz.getDeclaredFields());
+		getAnnotations(secrecy, integrity, clazz.getDeclaredMethods());
+		getAnnotations(secrecy, integrity, clazz.getDeclaredConstructors());
 
 		for (Annotation annotation : reflectionClass.getAnnotationsByType(Critical.class)) {
 			Critical critical = (Critical) annotation;
 			for (String signature : critical.secrecy()) {
-				if (!signature.equals(memberSignature)) {
-					secrecy.add(normalize(signature));
-				}
+				secrecy.add(normalize(signature));
 			}
 			for (String signature : critical.integrity()) {
-				if (!signature.equals(memberSignature)) {
-					integrity.add(normalize(signature));
-				}
+				integrity.add(normalize(signature));
 			}
 
 		}
@@ -50,11 +41,19 @@ class Annotations {
 		this.integrity = Collections.unmodifiableSet(integrity);
 	}
 
-	public Annotations(String memberSignature, Set<String> secrecy, Set<String> integrity, String earlyReturn) {
-		this.secrecy = secrecy;
-		this.integrity = integrity;
-		this.memberSignature = memberSignature;
-		this.earlyReturn = earlyReturn;
+	private void getAnnotations(Set<String> secrecy, Set<String> integrity, AccessibleObject[] accessibleObjects) {
+		for(AccessibleObject object: accessibleObjects) {
+			for (Annotation annotation : object.getDeclaredAnnotations()) {
+				String signature = SignatureHelper.getSignature(object);
+				if (annotation instanceof Secrecy) {
+					secrecy.add(signature);
+					this.earlyReturns.put(signature, ((Secrecy) annotation).earlyReturn().trim());
+				} else if (annotation instanceof Integrity) {
+					integrity.add(signature);
+					this.earlyReturns.put(signature, ((Integrity) annotation).earlyReturn().trim());
+				}
+			}
+		}
 	}
 
 	public boolean hasSecrecy(String signature) {
@@ -75,17 +74,17 @@ class Annotations {
 		return false;
 	}
 
-	public String getMemberSignature() {
-		return memberSignature;
-	}
-
-	public String getEarlyReturn() {
-		return earlyReturn;
-	}
+//	public String getMemberSignature() {
+//		return clazz;
+//	}
+//
+//	public String getEarlyReturn() {
+//		return earlyReturn;
+//	}
 
 	@Override
 	public String toString() {
-		return super.toString() + "(" + memberSignature + ": secrecy=" + secrecy + ", integrity=" + integrity + ")";
+		return super.toString() + "(" + clazz + ": secrecy=" + secrecy + ", integrity=" + integrity + ")";
 	}
 
 	private static boolean equivalentSignatures(String rhs, String lhs) {
@@ -100,5 +99,9 @@ class Annotations {
 			return signature + ":void";
 		}
 		return signature;
+	}
+
+	public String getEarlyReturn(String memberSiganture) {
+		return earlyReturns.containsKey(memberSiganture) ? earlyReturns.get(memberSiganture) : null;
 	}
 }

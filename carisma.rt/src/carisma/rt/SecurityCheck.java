@@ -13,6 +13,7 @@ import com.sun.jdi.InvalidTypeException;
 import com.sun.jdi.InvocationException;
 import com.sun.jdi.Method;
 import com.sun.jdi.ObjectReference;
+import com.sun.jdi.ReferenceType;
 import com.sun.jdi.ThreadReference;
 import com.sun.jdi.TypeComponent;
 import com.sun.jdi.Value;
@@ -27,7 +28,7 @@ class SecurityCheck {
 	private final Stack<TypeComponent> stack;
 	private final ClassloaderCache cache;
 	private final EventThread events;
-	
+
 	private boolean record = false;
 	private final String trace;
 	private String intend = "";
@@ -41,7 +42,7 @@ class SecurityCheck {
 
 	private void enableTraceRecord(TypeComponent caller, TypeComponent called) {
 		record = true;
-		try(FileWriter writer = new FileWriter(trace)){
+		try (FileWriter writer = new FileWriter(trace)) {
 			writer.append(SignatureHelper.getSignature(caller));
 			writer.append(System.lineSeparator());
 			writer.append("--");
@@ -56,8 +57,8 @@ class SecurityCheck {
 
 	void methodEntryEvent(MethodEntryEvent event) {
 		Method method = event.method();
-		if(record) {
-			try(FileWriter writer = new FileWriter(trace, true)){
+		if (record) {
+			try (FileWriter writer = new FileWriter(trace, true)) {
 				writer.append(intend);
 				writer.append(SignatureHelper.getSignature(method));
 				writer.append(System.lineSeparator());
@@ -79,26 +80,34 @@ class SecurityCheck {
 			} catch (ClassNotLoadedException e) {
 				throw new RuntimeException(e);
 			}
-			String earlyReturn = getEarlyReturnValue(method, thread);
-			if (earlyReturn.length() == 0) {
-				System.exit(-1);
-			} else {
-				try {
-					Value value = getCounterMeasureValue(method, thread, earlyReturn);
-					events.disableEventRequests();
-					thread.forceEarlyReturn(value);
-					System.out.println("Forced early return of \""+SignatureHelper.getSignature(method)+"\" with the value \""+value+"\".");
-					events.enableEventRequests();
-				} catch (InvalidTypeException | ClassNotLoadedException | IncompatibleThreadStateException e) {
-					e.printStackTrace();
+			String earlyReturn;
+			try {
+				earlyReturn = cache.getEarlyReturn(method, thread).trim();
+				if (earlyReturn.length() == 0) {
+					System.exit(-1);
+				} else {
+					try {
+						Value value = getCounterMeasureValue(method, thread, earlyReturn);
+						events.disableEventRequests();
+						thread.forceEarlyReturn(value);
+						System.out.println("Forced early return of \"" + SignatureHelper.getSignature(method)
+								+ "\" with the value \"" + value + "\".");
+						events.enableEventRequests();
+					} catch (InvalidTypeException | ClassNotLoadedException | IncompatibleThreadStateException e) {
+						e.printStackTrace();
+					}
 				}
+			} catch (Exception e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
 			}
+
 		}
 	}
 
 	void methodExitEvent(MethodExitEvent event) {
 		stack.pop();
-		if(record && intend.length() >= 2) {
+		if (record && intend.length() >= 2) {
 			intend = intend.substring(2);
 		}
 	}
@@ -106,8 +115,8 @@ class SecurityCheck {
 	void fieldEvent(WatchpointEvent event) {
 		ThreadReference thread = event.thread();
 		Field field = event.field();
-		if(record) {
-			try(FileWriter writer = new FileWriter(trace, true)){
+		if (record) {
+			try (FileWriter writer = new FileWriter(trace, true)) {
 				writer.append(intend);
 				writer.append(SignatureHelper.getSignature(field));
 				writer.append(System.lineSeparator());
@@ -120,55 +129,48 @@ class SecurityCheck {
 			return;
 		}
 		if (!checkSecureDependencies(field, thread)) {
-			String earlyReturn = getEarlyReturnValue(field, thread);
-			if (earlyReturn.length() == 0) {
-				System.exit(-1);
-			} else {
-				try {
-					Value value = getCounterMeasureValue(field, thread, earlyReturn);
-					event.object().setValue(field, value);
-				} catch (InvalidTypeException | ClassNotLoadedException | IncompatibleThreadStateException e) {
-					e.printStackTrace();
+			String earlyReturn;
+			try {
+				earlyReturn = cache.getEarlyReturn(field, thread).trim();
+				if (earlyReturn.length() == 0) {
+					System.exit(-1);
+				} else {
+					try {
+						Value value = getCounterMeasureValue(field, thread, earlyReturn);
+						event.object().setValue(field, value);
+					} catch (InvalidTypeException | ClassNotLoadedException | IncompatibleThreadStateException e) {
+						e.printStackTrace();
+					}
 				}
+			} catch (Exception e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
 			}
+
 		}
 		stack.pop();
 	}
 
 	private boolean checkSecureDependencies(TypeComponent member, ThreadReference thread) {
-		if(!thread.isSuspended()) {
+		if (!thread.isSuspended()) {
 			thread.suspend();
 		}
 		try {
-			ObjectReference thisObject;
-			if (member instanceof Field) {
-				thisObject = member.declaringType().classObject();
-			} else {
-				thisObject = thread.frame(0).thisObject();
-				if (thisObject == null) {
-					thisObject = member.declaringType().classObject();
-				}
+			ReferenceType thisType = member.declaringType();
 
-			}
-			Annotations annotations = cache.getAnnotations(member, thisObject, thread);
 			TypeComponent caller = stack.get(stack.size() - 2);
-			ObjectReference callerObject;
-			if (caller.declaringType().equals(member.declaringType())) {
-				callerObject = thisObject;
-			} else {
-				if (member instanceof Field) {
-					callerObject = thread.frame(0).thisObject();
-				} else {
-					callerObject = thread.frame(1).thisObject();
-				}
-				if (callerObject == null) {
-					callerObject = caller.declaringType().classObject();
-				}
-			}
-			Annotations callerAnnotations = cache.getAnnotations(caller, callerObject, thread);
+			ReferenceType callerType = caller.declaringType();
 
-			boolean results = checkSecureDependencies(callerAnnotations, annotations);
-			if(!results) {
+			if (thisType.equals(callerType)) {
+				return true;
+			}
+
+			Annotations annotations = cache.getAnnotations(thisType, thread);
+			Annotations callerAnnotations = cache.getAnnotations(callerType, thread);
+
+			boolean results = checkSecureDependencies(SignatureHelper.getSignature(caller),
+					SignatureHelper.getSignature(member), callerAnnotations, annotations);
+			if (!results) {
 				enableTraceRecord(caller, member);
 			}
 			return results;
@@ -180,14 +182,12 @@ class SecurityCheck {
 		return true;
 	}
 
-	private boolean checkSecureDependencies(Annotations lhsAnnotations, Annotations rhsAnnotations) {
-		String rhsMemberSignature = rhsAnnotations.getMemberSignature();
+	private boolean checkSecureDependencies(String lhsMemberSignature, String rhsMemberSignature, Annotations lhsAnnotations, Annotations rhsAnnotations) {
 
 		boolean lhsRequiresRhsSecrecy = lhsAnnotations.hasSecrecy(rhsMemberSignature);
 		boolean rhsRequiresRhsSecrecy = rhsAnnotations.hasSecrecy(rhsMemberSignature);
 
 		if (lhsRequiresRhsSecrecy != rhsRequiresRhsSecrecy) {
-			String lhsMemberSignature = lhsAnnotations.getMemberSignature();
 			if (lhsRequiresRhsSecrecy) {
 				System.err.println("Violation of Secrecy: \"" + lhsMemberSignature + "\" requires secrecy but \""
 						+ rhsMemberSignature + "\" doesn't provides secrecy!");
@@ -202,7 +202,6 @@ class SecurityCheck {
 		boolean rhsRequiresRhsIntegrity = rhsAnnotations.hasIntegrity(rhsMemberSignature);
 
 		if (lhsRequiresRhsIntegrity != rhsRequiresRhsIntegrity) {
-			String lhsMemberSignature = lhsAnnotations.getMemberSignature();
 			if (lhsRequiresRhsIntegrity) {
 				System.err.println("Violation of Integrity: \"" + lhsMemberSignature + "\" requires integrity but \""
 						+ rhsMemberSignature + "\" doesn't provides integrity!");
@@ -254,9 +253,10 @@ class SecurityCheck {
 							try {
 								events.disableEventRequests();
 								ObjectReference thisObject = thread.frame(0).thisObject();
-								value = thisObject.invokeMethod(thread, toCall, Collections.emptyList(), ObjectReference.INVOKE_NONVIRTUAL);
+								value = thisObject.invokeMethod(thread, toCall, Collections.emptyList(),
+										ObjectReference.INVOKE_NONVIRTUAL);
 								events.enableEventRequests();
-								System.out.println("Got early return from method \"" + earlyReturn + "\": "+value);
+								System.out.println("Got early return from method \"" + earlyReturn + "\": " + value);
 							} catch (InvocationException e) {
 								throw new RuntimeException(e);
 							}
@@ -268,22 +268,6 @@ class SecurityCheck {
 			}
 		}
 		return value;
-	}
-
-	private String getEarlyReturnValue(TypeComponent member, ThreadReference thread) {
-		String earlyReturn;
-		try {
-			ObjectReference thisObject;
-			if (member instanceof Field) {
-				thisObject = member.declaringType().classObject();
-			} else {
-				thisObject = thread.frame(0).thisObject();
-			}
-			earlyReturn = cache.getAnnotations(member, thisObject, thread).getEarlyReturn().trim();
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-		return earlyReturn;
 	}
 
 }

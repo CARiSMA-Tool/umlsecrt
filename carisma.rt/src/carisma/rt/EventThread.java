@@ -116,9 +116,9 @@ class EventThread extends Thread {
 		List<Field> fields = event.referenceType().fields();
 		for (Field field : fields) {
 			try {
-				Annotations annotation = cache.getAnnotations(field, event.referenceType().classObject(),
+				Annotations annotation = cache.getAnnotations(event.referenceType(),
 						event.thread());
-				if (annotation.hasSecrecy(annotation.getMemberSignature())) {
+				if (annotation.hasSecrecy(SignatureHelper.getSignature(field))) {
 
 					AccessWatchpointRequest accessWatchPoint = manager.createAccessWatchpointRequest(field);
 					eventRequests.add(accessWatchPoint);
@@ -128,7 +128,7 @@ class EventThread extends Thread {
 					accessWatchPoint.setSuspendPolicy(EventRequest.SUSPEND_ALL);
 					accessWatchPoint.enable();
 				}
-				if (annotation.hasIntegrity(annotation.getMemberSignature())) {
+				if (annotation.hasIntegrity(SignatureHelper.getSignature(field))) {
 
 					ModificationWatchpointRequest modificationWatchPoint = manager
 							.createModificationWatchpointRequest(field);
