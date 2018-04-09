@@ -82,8 +82,8 @@ class SecurityCheck {
 			}
 			String earlyReturn;
 			try {
-				earlyReturn = cache.getEarlyReturn(method, thread).trim();
-				if (earlyReturn.length() == 0) {
+				earlyReturn = cache.getEarlyReturn(method, thread);
+				if (earlyReturn ==  null || earlyReturn.length() == 0) {
 					System.exit(-1);
 				} else {
 					try {
