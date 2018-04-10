@@ -27,5 +27,39 @@
          </managedMarker>
       </compilationParticipant>
    </extension>
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            allPopups="true"
+            locationURI="popup:org.eclipse.jdt.ui.PackageExplorer?after=additions">
+         <menu
+               id="carisma.rt.editor.menu.main"
+               label="UMLsecRT">
+            <command
+                  commandId="carisma.rt.editor.command.reverseengineer"
+                  label="Create UML Model"
+                  style="push">
+            </command>
+            <command
+                  commandId="carisma.rt.editor.command.sync"
+                  label="Sync Changes to Code"
+                  style="push">
+            </command>
+         </menu>
+      </menuContribution>
+   </extension>
+   <extension
+         point="org.eclipse.ui.commands">
+      <command
+            defaultHandler="carisma.rt.editor.uml.FwdHandler"
+            id="carisma.rt.editor.command.reverseengineer"
+            name="Create UML Model">
+      </command>
+      <command
+            defaultHandler="carisma.rt.editor.uml.SyncHandler"
+            id="carisma.rt.editor.command.sync"
+            name="Sync Changes to Code">
+      </command>
+   </extension>
 
 </plugin>

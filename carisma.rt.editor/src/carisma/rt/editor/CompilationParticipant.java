@@ -133,7 +133,7 @@ public class CompilationParticipant extends org.eclipse.jdt.core.compiler.Compil
 												}
 											}
 										}
-										if (foundMethod != null) {
+										if (foundMethod != null && !typeName.toLowerCase().equals("void")) {
 											boolean correctReturnType = false;
 											typeName = replacePrimitiveWithObject(typeName);
 											String[][] resolvedNeededTypes = type.resolveType(typeName);
