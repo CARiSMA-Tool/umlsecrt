@@ -32,6 +32,7 @@ class EventThread extends Thread {
 			try {
 				EventSet eventSet = queue.remove(1000);
 				if(eventSet == null) {
+					System.out.println("System terminated");
 					System.exit(0);
 				}
 				EventIterator it = eventSet.eventIterator();
@@ -104,6 +105,7 @@ class EventThread extends Thread {
 		} else if (event instanceof ClassPrepareEvent) {
 			prepareClass((ClassPrepareEvent) event);
 		} else if (event instanceof VMDeathEvent) {
+			System.out.println("Sytem terminated");
 			System.exit(0);
 		}
 	}

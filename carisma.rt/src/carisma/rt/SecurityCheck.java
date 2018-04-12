@@ -75,6 +75,7 @@ class SecurityCheck {
 		if (!checkSecureDependencies(method, thread)) {
 			try {
 				if (method.returnType() instanceof VoidType) {
+					System.err.println("Shutdown system!");
 					System.exit(-1);
 				}
 			} catch (ClassNotLoadedException e) {
@@ -84,6 +85,7 @@ class SecurityCheck {
 			try {
 				earlyReturn = cache.getEarlyReturn(method, thread);
 				if (earlyReturn ==  null || earlyReturn.length() == 0) {
+					System.err.println("Shutdown system!");
 					System.exit(-1);
 				} else {
 					try {

@@ -1,10 +1,13 @@
 package example;
 
+import org.gravity.security.annotations.requirements.Critical;
 import org.gravity.security.annotations.requirements.Secrecy;
 
-public class B {
+@Critical
+public class ProtectedClass {
 	@Secrecy
 	private void m() {
 		System.out.println("m()");
 	}
+
 }

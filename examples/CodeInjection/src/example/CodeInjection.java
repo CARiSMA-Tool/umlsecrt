@@ -1,5 +1,7 @@
 package example;
 
+import java.lang.annotation.Annotation;
+
 import javax.script.*;
 
 import org.gravity.security.annotations.requirements.Critical;
@@ -22,7 +24,9 @@ public class CodeInjection {
 
 	@Secrecy
 	public static void main(String[] args) {
-		System.out.println(CodeInjection.class.getDeclaredMethods()[0].getDeclaredAnnotations());
+		for(Annotation a : a(new Annotation[0])) {
+			System.out.println(a.annotationType());
+		}
 		try {
 			ScriptEngineManager manager = new ScriptEngineManager();
 			ScriptEngine engine = manager.getEngineByName("JavaScript");
@@ -30,5 +34,9 @@ public class CodeInjection {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public static Annotation[] a(Annotation[] s) {
+		return CodeInjection.class.getAnnotations();
 	}
 }
