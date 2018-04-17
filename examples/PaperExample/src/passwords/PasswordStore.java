@@ -9,11 +9,15 @@ import org.gravity.security.annotations.requirements.Secrecy;
 public class PasswordStore {
 
 	@Secrecy(earlyReturn = "secure")
-	private Hashtable<String, String> table = new Hashtable<String, String>();
+	private Hashtable<String, String> table;
+	
+	public PasswordStore(String password) {
+		table = new ProtectedHashtable<String, String>(password);
+	}
 
 	public String getPassword(String id, String pwd) {
 		if (checkMasterPassword(pwd)) {
-			return table.get(id);
+			return getTable().get(id);
 		}
 		throw new SecurityException();
 	}
@@ -23,14 +27,19 @@ public class PasswordStore {
 	}
 	
 	public void savePassword(String id, String password) {
-		table.put(id, password);
+		getTable().put(id, password);
 	}
 
-	public Hashtable<String, String> secure() {
-		for (String key : table.keySet()) {
-			table.put(key, randomString());
-		}
+	@Secrecy(earlyReturn = "secure")
+	private Hashtable<String, String> getTable(){
 		return table;
+	}
+	
+	public Hashtable<String, String> secure() {
+		for (String key : getTable().keySet()) {
+			getTable().put(key, randomString());
+		}
+		return getTable();
 	}
 
 	private String randomString() {

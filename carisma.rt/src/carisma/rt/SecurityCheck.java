@@ -43,6 +43,12 @@ class SecurityCheck {
 	private void enableTraceRecord(TypeComponent caller, TypeComponent called) {
 		record = true;
 		try (FileWriter writer = new FileWriter(trace)) {
+			int indexOf = stack.indexOf(caller);
+			if(indexOf>0) {
+				writer.append(SignatureHelper.getSignature(stack.get(indexOf-1)));
+				writer.append(System.lineSeparator());
+				writer.append("--");
+			}
 			writer.append(SignatureHelper.getSignature(caller));
 			writer.append(System.lineSeparator());
 			writer.append("--");

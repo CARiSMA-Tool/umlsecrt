@@ -30,7 +30,7 @@ class EventThread extends Thread {
 		EventQueue queue = vm.eventQueue();
 		while (true) {
 			try {
-				EventSet eventSet = queue.remove(1000);
+				EventSet eventSet = queue.remove(10000);
 				if(eventSet == null) {
 					System.out.println("System terminated");
 					System.exit(0);
@@ -129,6 +129,15 @@ class EventThread extends Thread {
 					}
 					accessWatchPoint.setSuspendPolicy(EventRequest.SUSPEND_ALL);
 					accessWatchPoint.enable();
+					
+					ModificationWatchpointRequest modificationWatchPoint = manager
+							.createModificationWatchpointRequest(field);
+
+					for (String exclude : excludes) {
+						modificationWatchPoint.addClassExclusionFilter(exclude);
+					}
+					modificationWatchPoint.setSuspendPolicy(EventRequest.SUSPEND_ALL);
+					modificationWatchPoint.enable();
 				}
 				if (annotation.hasIntegrity(SignatureHelper.getSignature(field))) {
 

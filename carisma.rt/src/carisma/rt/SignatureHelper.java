@@ -33,7 +33,7 @@ public class SignatureHelper {
 			}
 			return string;
 		} else if (caller instanceof Field) {
-			return caller.name() + ':' + ((Field) caller).typeName();
+			return caller.toString() + ':' + ((Field) caller).typeName();
 		}
 		return null;
 	}
@@ -58,7 +58,7 @@ public class SignatureHelper {
 				} else if (member instanceof java.lang.reflect.Field) {
 					java.lang.reflect.Field field = (java.lang.reflect.Field) member;
 					builder.append(':');
-					builder.append(field.getType().getSimpleName());
+					builder.append(field.getType().getName()); //Evtl fullyqualifed name
 				}
 			}
 			return builder.toString();

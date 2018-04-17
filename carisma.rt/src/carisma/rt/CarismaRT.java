@@ -23,7 +23,7 @@ public class CarismaRT {
 	private Thread outThread = null;
 
 	// Class patterns for which we don't want events
-	private String[] excludes = new String[] { "java.*", "javax.*", "sun.*", "com.sun.*", "jdk.*" };
+	private String[] excludes = new String[] { "javax.*", "sun.*", "com.sun.*", "jdk.*", "java.*" }; //"java.*"
 
 	private Set<String> classpath = new HashSet<String>();
 

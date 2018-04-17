@@ -7,6 +7,11 @@ import carisma.rt.CarismaRT;
 public class Tests {
 
 	@Test
+	public void paperExample() {
+		CarismaRT.main(new String[] { "malware.MaliciousApplication", "-cp", "../examples/PaperExample/bin"});
+	}
+	
+	@Test
 	public void codeInjection() {
 		CarismaRT.main(new String[] { "example.CodeInjection", "-cp", "../examples/CodeInjection/bin"});
 	}

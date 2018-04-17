@@ -22,6 +22,7 @@ import com.sun.jdi.StringReference;
 import com.sun.jdi.ThreadReference;
 import com.sun.jdi.TypeComponent;
 import com.sun.jdi.Value;
+
 class ClassloaderCache {
 
 	private Hashtable<ReferenceType, Class<?>> classes = new Hashtable<>();
@@ -41,110 +42,130 @@ class ClassloaderCache {
 				e.printStackTrace();
 			}
 		}
-		this.loader = new ModifiableURLClassLoader(urls, parent) ;
+		this.loader = new ModifiableURLClassLoader(urls, parent);
 		this.events = events;
 	}
-//
-//	Annotations getAnnotationsNew(TypeComponent member, ObjectReference clazzReference, ThreadReference thread) throws Exception {
-//
-//		ClassObjectReference classObjectReference;
-//		if(clazzReference instanceof ClassObjectReference) {
-//			classObjectReference = (ClassObjectReference) clazzReference;
-//		}
-//		else {
-//			classObjectReference = clazzReference.referenceType().classObject();
-//		}
-//		
-//		ObjectReference memberObject = null;
-//		if (member instanceof Method) {
-//			ArrayReference declared;
-//			if (((Method) member).isConstructor()) {
-//				declared = (ArrayReference) invokeMethod(thread, classObjectReference, "getDeclaredConstructors");
-//			} else {
-//				declared = (ArrayReference) invokeMethod(thread, classObjectReference, "getDeclaredMethods");
-//				List<Value> toRemove = new LinkedList<>();
-//				for (Value value : declared.getValues()) {
-//					ObjectReference object = (ObjectReference) value;
-//					StringReference name = (StringReference) invokeMethod(thread, object, "getName");
-//					if (!member.name().equals(name.value())) {
-//						toRemove.add(value);
-//					}
-//				}
-//				declared.getValues().removeAll(toRemove);
-//			}
-//
-//			for (Value d : declared.getValues()) {
-//				ObjectReference objectReference = (ObjectReference) d;
-//				boolean match = true;
-//				List<String> searched = ((Method) member).argumentTypeNames();
-//				ArrayReference current = (ArrayReference) invokeMethod(thread, objectReference, "getParameterTypes");
-//				if (searched.size() == current.length()) {
-//					for (int i = 0; i < searched.size(); i++) {
-//						Value value = current.getValue(i);
-//						String name = null;
-//						if (value instanceof ClassObjectReference) {
-//							name = ((ClassObjectReference) value).reflectedType().name();
-//						} else {
-//							throw new RuntimeException();
-//						}
-//
-//						if (!searched.get(i).equals(name)) {
-//							match = false;
-//							break;
-//						}
-//					}
-//					if (match) {
-//						memberObject = (ObjectReference) d;
-//						break;
-//					}
-//				}
-//
-//			}
-//		} else if (member instanceof Field) {
-//			Field field = (Field) member;
-//			ArrayReference declared = (ArrayReference) invokeMethod(thread, classObjectReference, "getDeclaredFields");
-//			for (Value v : declared.getValues()) {
-//				ObjectReference object = (ObjectReference) v;
-//				StringReference name = (StringReference) invokeMethod(thread, object, "getName");
-//				if (member.name().equals(name.value())) {
-//					Value type = invokeMethod(thread, object, "getType");
-//					String typeName;
-//					if (type instanceof ClassObjectReference) {
-//						typeName = ((ClassObjectReference) type).reflectedType().name();
-//					} else {
-//						throw new RuntimeException();
-//					}
-//					if (field.typeName().equals(typeName)) {
-//						memberObject = object;
-//						break;
-//					}
-//				}
-//			}
-//		} else {
-//			throw new RuntimeException();
-//		}
-//		ArrayReference annotationReferences = (ArrayReference) invokeMethod(thread, memberObject,
-//				"getDeclaredAnnotations");
-//
-//		Set<String> secrecy = new HashSet<>();
-//		Set<String> integrity = new HashSet<>();
-//		for (Value value : annotationReferences.getValues()) {
-//			System.out.println(value);
-//		}
-//
-//		return new Annotations(member.name(), secrecy, integrity, "");
-//	}
-//
-	Annotations getAnnotations(ReferenceType type, ThreadReference thread) throws Exception {
-		ArrayReference urls = (ArrayReference) invokeMethod(thread, type.classLoader(), "getURLs");
-		for(Value value : urls.getValues()) {
-			StringReference path = (StringReference) invokeMethod(thread, (ObjectReference) value , "getPath");
-			loader.addURL(new File(path.value()).toURI().toURL());
-		}
 
-		Class<?> reflectionClass = loadClass(type);
-		
-		if(clazzAnnotations.containsKey(reflectionClass)) {
+	//
+	// Annotations getAnnotationsNew(TypeComponent member, ObjectReference
+	// clazzReference, ThreadReference thread) throws Exception {
+	//
+	// ClassObjectReference classObjectReference;
+	// if(clazzReference instanceof ClassObjectReference) {
+	// classObjectReference = (ClassObjectReference) clazzReference;
+	// }
+	// else {
+	// classObjectReference = clazzReference.referenceType().classObject();
+	// }
+	//
+	// ObjectReference memberObject = null;
+	// if (member instanceof Method) {
+	// ArrayReference declared;
+	// if (((Method) member).isConstructor()) {
+	// declared = (ArrayReference) invokeMethod(thread, classObjectReference,
+	// "getDeclaredConstructors");
+	// } else {
+	// declared = (ArrayReference) invokeMethod(thread, classObjectReference,
+	// "getDeclaredMethods");
+	// List<Value> toRemove = new LinkedList<>();
+	// for (Value value : declared.getValues()) {
+	// ObjectReference object = (ObjectReference) value;
+	// StringReference name = (StringReference) invokeMethod(thread, object,
+	// "getName");
+	// if (!member.name().equals(name.value())) {
+	// toRemove.add(value);
+	// }
+	// }
+	// declared.getValues().removeAll(toRemove);
+	// }
+	//
+	// for (Value d : declared.getValues()) {
+	// ObjectReference objectReference = (ObjectReference) d;
+	// boolean match = true;
+	// List<String> searched = ((Method) member).argumentTypeNames();
+	// ArrayReference current = (ArrayReference) invokeMethod(thread,
+	// objectReference, "getParameterTypes");
+	// if (searched.size() == current.length()) {
+	// for (int i = 0; i < searched.size(); i++) {
+	// Value value = current.getValue(i);
+	// String name = null;
+	// if (value instanceof ClassObjectReference) {
+	// name = ((ClassObjectReference) value).reflectedType().name();
+	// } else {
+	// throw new RuntimeException();
+	// }
+	//
+	// if (!searched.get(i).equals(name)) {
+	// match = false;
+	// break;
+	// }
+	// }
+	// if (match) {
+	// memberObject = (ObjectReference) d;
+	// break;
+	// }
+	// }
+	//
+	// }
+	// } else if (member instanceof Field) {
+	// Field field = (Field) member;
+	// ArrayReference declared = (ArrayReference) invokeMethod(thread,
+	// classObjectReference, "getDeclaredFields");
+	// for (Value v : declared.getValues()) {
+	// ObjectReference object = (ObjectReference) v;
+	// StringReference name = (StringReference) invokeMethod(thread, object,
+	// "getName");
+	// if (member.name().equals(name.value())) {
+	// Value type = invokeMethod(thread, object, "getType");
+	// String typeName;
+	// if (type instanceof ClassObjectReference) {
+	// typeName = ((ClassObjectReference) type).reflectedType().name();
+	// } else {
+	// throw new RuntimeException();
+	// }
+	// if (field.typeName().equals(typeName)) {
+	// memberObject = object;
+	// break;
+	// }
+	// }
+	// }
+	// } else {
+	// throw new RuntimeException();
+	// }
+	// ArrayReference annotationReferences = (ArrayReference) invokeMethod(thread,
+	// memberObject,
+	// "getDeclaredAnnotations");
+	//
+	// Set<String> secrecy = new HashSet<>();
+	// Set<String> integrity = new HashSet<>();
+	// for (Value value : annotationReferences.getValues()) {
+	// System.out.println(value);
+	// }
+	//
+	// return new Annotations(member.name(), secrecy, integrity, "");
+	// }
+	//
+	Annotations getAnnotations(ReferenceType type, ThreadReference thread) throws Exception {
+		ClassLoaderReference classLoader = type.classLoader();
+
+		Class<?> reflectionClass;
+		if (classLoader == null) {
+			String name = type.name();
+			if (name.startsWith("java.")) { // Classes from java.* have no class loader
+				reflectionClass = loader.loadClass(name);
+			} else {
+				throw new RuntimeException();
+			}
+		} else {
+			ArrayReference urls = (ArrayReference) invokeMethod(thread, classLoader, "getURLs");
+			for (Value value : urls.getValues()) {
+				StringReference path = (StringReference) invokeMethod(thread, (ObjectReference) value, "getPath");
+				loader.addURL(new File(path.value()).toURI().toURL());
+			}
+		}
+		reflectionClass = loadClass(type);
+
+		if (clazzAnnotations.containsKey(reflectionClass)) {
 			return clazzAnnotations.get(reflectionClass);
 		}
 
@@ -165,9 +186,9 @@ class ClassloaderCache {
 	private Value invokeMethod(ThreadReference thread, ObjectReference object, String methodName,
 			List<? extends Value> parameters) throws InvalidTypeException, ClassNotLoadedException,
 			IncompatibleThreadStateException, InvocationException {
-		
+
 		events.disableEventRequests();
-		
+
 		Method method = null;
 		for (Method m : object.referenceType().allMethods()) {
 			if (methodName.equals(m.name())) {
@@ -191,7 +212,7 @@ class ClassloaderCache {
 		Value returnValue = object.invokeMethod(thread, method, parameters, 0);
 
 		events.enableEventRequests();
-		
+
 		return returnValue;
 	}
 
@@ -236,18 +257,17 @@ class ClassloaderCache {
 		}
 		return null;
 	}
+
 	public String getEarlyReturn(TypeComponent member, ThreadReference thread) throws Exception {
 		Class<?> referenceType;
-		if(classes.containsKey(member.declaringType())) {
-			referenceType =  classes.get(member.declaringType());
-		}
-		else {
+		if (classes.containsKey(member.declaringType())) {
+			referenceType = classes.get(member.declaringType());
+		} else {
 			referenceType = loadClass(member.declaringType());
 		}
-		if(clazzAnnotations.containsKey(referenceType)) {
+		if (clazzAnnotations.containsKey(referenceType)) {
 			return clazzAnnotations.get(referenceType).getEarlyReturn(SignatureHelper.getSignature(member));
-		}
-		else {
+		} else {
 			Annotations annotations = getAnnotations(member.declaringType(), thread);
 			clazzAnnotations.put(referenceType, annotations);
 			return annotations.getEarlyReturn(SignatureHelper.getSignature(member));
