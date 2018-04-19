@@ -7,6 +7,8 @@ import com.sun.jdi.event.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
+import org.w3c.dom.events.EventException;
+
 class EventThread extends Thread {
 
 	private final VirtualMachine vm;
@@ -77,6 +79,17 @@ class EventThread extends Thread {
 		methodExit.enable();
 		methodEntry.enable();
 		classPrepare.enable();
+		
+		eventRequests.add(createBreakPoint(manager, "java.lang.reflect.Field", "get"));
+		eventRequests.add(createBreakPoint(manager, "java.lang.reflect.Field", "set"));
+	}
+
+	private BreakpointRequest createBreakPoint(EventRequestManager manager, String className, String operationName) {
+		ClassType reflectField = (ClassType) vm.classesByName(className).get(0);
+		Method method = reflectField.methodsByName(operationName).get(0);
+		BreakpointRequest request = manager.createBreakpointRequest(method.location());
+		request.enable();
+		return request;
 	}
 
 	/**
@@ -96,7 +109,9 @@ class EventThread extends Thread {
 	 * Dispatch incoming events
 	 */
 	private void handleEvent(Event event) {
-		if (event instanceof WatchpointEvent) {
+		if(event instanceof BreakpointEvent) {
+			threadTrace(((BreakpointEvent) event).thread()).breakpointEvent(((BreakpointEvent) event));
+		} else if (event instanceof WatchpointEvent) {
 			threadTrace(((WatchpointEvent) event).thread()).fieldEvent(((WatchpointEvent) event));
 		} else if (event instanceof MethodEntryEvent) {
 			threadTrace(((MethodEntryEvent) event).thread()).methodEntryEvent((MethodEntryEvent) event);
@@ -129,15 +144,6 @@ class EventThread extends Thread {
 					}
 					accessWatchPoint.setSuspendPolicy(EventRequest.SUSPEND_ALL);
 					accessWatchPoint.enable();
-					
-					ModificationWatchpointRequest modificationWatchPoint = manager
-							.createModificationWatchpointRequest(field);
-
-					for (String exclude : excludes) {
-						modificationWatchPoint.addClassExclusionFilter(exclude);
-					}
-					modificationWatchPoint.setSuspendPolicy(EventRequest.SUSPEND_ALL);
-					modificationWatchPoint.enable();
 				}
 				if (annotation.hasIntegrity(SignatureHelper.getSignature(field))) {
 

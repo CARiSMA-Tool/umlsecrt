@@ -5,20 +5,26 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Stack;
 
+import org.omg.CORBA.VM_ABSTRACT;
+
 import com.sun.jdi.AbsentInformationException;
 import com.sun.jdi.ClassNotLoadedException;
+import com.sun.jdi.ClassObjectReference;
 import com.sun.jdi.Field;
 import com.sun.jdi.IncompatibleThreadStateException;
 import com.sun.jdi.InvalidTypeException;
 import com.sun.jdi.InvocationException;
+import com.sun.jdi.LocalVariable;
 import com.sun.jdi.Method;
 import com.sun.jdi.ObjectReference;
 import com.sun.jdi.ReferenceType;
+import com.sun.jdi.StringReference;
 import com.sun.jdi.ThreadReference;
 import com.sun.jdi.TypeComponent;
 import com.sun.jdi.Value;
 import com.sun.jdi.VirtualMachine;
 import com.sun.jdi.VoidType;
+import com.sun.jdi.event.BreakpointEvent;
 import com.sun.jdi.event.MethodEntryEvent;
 import com.sun.jdi.event.MethodExitEvent;
 import com.sun.jdi.event.WatchpointEvent;
@@ -44,8 +50,8 @@ class SecurityCheck {
 		record = true;
 		try (FileWriter writer = new FileWriter(trace)) {
 			int indexOf = stack.indexOf(caller);
-			if(indexOf>0) {
-				writer.append(SignatureHelper.getSignature(stack.get(indexOf-1)));
+			if (indexOf > 0) {
+				writer.append(SignatureHelper.getSignature(stack.get(indexOf - 1)));
 				writer.append(System.lineSeparator());
 				writer.append("--");
 			}
@@ -90,7 +96,7 @@ class SecurityCheck {
 			String earlyReturn;
 			try {
 				earlyReturn = cache.getEarlyReturn(method, thread);
-				if (earlyReturn ==  null || earlyReturn.length() == 0) {
+				if (earlyReturn == null || earlyReturn.length() == 0) {
 					System.err.println("Shutdown system!");
 					System.exit(-1);
 				} else {
@@ -190,7 +196,8 @@ class SecurityCheck {
 		return true;
 	}
 
-	private boolean checkSecureDependencies(String lhsMemberSignature, String rhsMemberSignature, Annotations lhsAnnotations, Annotations rhsAnnotations) {
+	private boolean checkSecureDependencies(String lhsMemberSignature, String rhsMemberSignature,
+			Annotations lhsAnnotations, Annotations rhsAnnotations) {
 
 		boolean lhsRequiresRhsSecrecy = lhsAnnotations.hasSecrecy(rhsMemberSignature);
 		boolean rhsRequiresRhsSecrecy = rhsAnnotations.hasSecrecy(rhsMemberSignature);
@@ -276,6 +283,33 @@ class SecurityCheck {
 			}
 		}
 		return value;
+	}
+
+	public void breakpointEvent(BreakpointEvent breakpointEvent) {
+		Method method = breakpointEvent.location().method();
+		if (!"java.lang.reflect.Field".equals(method.declaringType().name())) {
+			return;
+		}
+		if ("get".equals(method.name()) || "set".equals(method.name())) {
+			try {
+				ObjectReference field = breakpointEvent.thread().frame(0).thisObject();
+				events.disableEventRequests();
+				ClassObjectReference value = (ClassObjectReference) field.invokeMethod(breakpointEvent.thread(), method.declaringType().methodsByName("getDeclaringClass").get(0), Collections.emptyList(), 0);
+				Annotations accessedField = cache.getAnnotations(value.reflectedType(), breakpointEvent.thread());
+				Annotations callerAnnotations = cache.getAnnotations(stack.peek().declaringType(), breakpointEvent.thread());
+				
+				StringReference fieldName = (StringReference) field.invokeMethod(breakpointEvent.thread(), method.declaringType().methodsByName("getName").get(0), Collections.emptyList(), 0);
+				String lhsSignature = SignatureHelper.getSignature(stack.peek());
+				String rhsSignature = SignatureHelper.getSignature(value.reflectedType().fieldByName(fieldName.value()));
+				checkSecureDependencies(lhsSignature, rhsSignature, callerAnnotations, accessedField);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			finally{
+				events.enableEventRequests();
+			}
+			
+		}
 	}
 
 }
