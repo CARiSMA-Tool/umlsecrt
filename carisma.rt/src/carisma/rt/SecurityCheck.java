@@ -28,7 +28,7 @@ import com.sun.jdi.event.WatchpointEvent;
 
 class SecurityCheck {
 
-	private static final boolean RUNTIME = false;
+	private static final boolean RUNTIME = true;
 	private final Stack<TypeComponent> stack;
 	private final ClassloaderCache cache;
 	private final EventThread events;
@@ -36,6 +36,7 @@ class SecurityCheck {
 	private boolean record = false;
 	private final String trace;
 	private String intend = "";
+	private int accesses = 0;
 	private long timeAll = 0, timeSecurity = 0, timeClassLoader = 0, timeBreakpoint = 0, timeAnnotations = 0;
 
 	SecurityCheck(ClassloaderCache cache, EventThread events, String traceLocation) {
@@ -46,6 +47,7 @@ class SecurityCheck {
 	}
 
 	void methodEntryEvent(MethodEntryEvent event) {
+		accesses++;
 		long tmp = System.nanoTime();
 
 		Method method = event.method();
@@ -106,8 +108,11 @@ class SecurityCheck {
 			intend = intend.substring(2);
 		}
 		timeAll += System.nanoTime() - tmp;
-		if (RUNTIME)
-			try (FileWriter writer = new FileWriter(trace.replace(".txt", "_times.txt"))) {
+		if (RUNTIME && accesses%100 == 0)
+			try (FileWriter writer = new FileWriter(trace.replace(".txt", "_times.txt"));
+					FileWriter accessWriter = new FileWriter(trace.replace(".txt", "_accesses.txt"))) {
+				accessWriter.write(Integer.toString(accesses));
+				
 				writer.append("timeAll [ms]: ");
 				writer.append(Long.toString(timeAll / 1000 / 1000));
 				writer.append('\n');
@@ -129,6 +134,7 @@ class SecurityCheck {
 	}
 
 	void fieldEvent(WatchpointEvent event) {
+		accesses++;
 		long tmp = System.nanoTime();
 		ThreadReference thread = event.thread();
 		Field field = event.field();
@@ -170,6 +176,7 @@ class SecurityCheck {
 	}
 
 	void breakpointEvent(BreakpointEvent breakpointEvent) {
+		accesses++;
 		if (stack.isEmpty()) {
 			return;
 		}

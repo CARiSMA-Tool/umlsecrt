@@ -10,12 +10,14 @@ import java.util.jar.JarInputStream;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -90,18 +92,34 @@ public class CarismaRT {
 		Set<String> allExcludes = getRestrictedPackages();
 		EventThread eventThread = new EventThread(vm, allExcludes, classpath);
 		eventThread.start();
-		redirectOutput(out, err);
-		vm.resume();
+		
+		Process process = vm.process();
+		try(BufferedReader r = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+			String  line;
+			while((line = r.readLine())!= null){
+				System.err.println(line);
+			}
+		}
+//		errThread = new StreamRedirectThread("error reader", process.getErrorStream(), err);
+//		outThread = new StreamRedirectThread("output reader", process.getInputStream(), out);
+//		errThread.start();
+//		outThread.start();
+ catch (IOException e) {
+	// TODO Auto-generated catch block
+	e.printStackTrace();
+}
+		
+//		vm.resume();
 
 		// Shutdown begins when event thread terminates
-		try {
-			eventThread.join();
-			errThread.join(); // Make sure output is forwarded
-			outThread.join(); // before we exit
-		} catch (InterruptedException exc) {
-			// we don't interrupt
-			System.err.println("Interruption");
-		}
+//		try {
+//			eventThread.join();
+//			errThread.join(); // Make sure output is forwarded
+//			outThread.join(); // before we exit
+//		} catch (InterruptedException exc) {
+//			// we don't interrupt
+//			System.err.println("Interruption");
+//		}
 	}
 	
 	private void run() {
@@ -132,16 +150,6 @@ public class CarismaRT {
 		} catch (VMStartException exc) {
 			throw new Error("Target VM failed to initialize: " + exc.getMessage());
 		}
-	}
-
-	void redirectOutput(OutputStream out, OutputStream err) {
-		Process process = vm.process();
-
-		// Copy target's output and error to our output and error.
-		errThread = new StreamRedirectThread("error reader", process.getErrorStream(), err);
-		outThread = new StreamRedirectThread("output reader", process.getInputStream(), out);
-		errThread.start();
-		outThread.start();
 	}
 
 	/**

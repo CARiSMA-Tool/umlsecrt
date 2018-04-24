@@ -62,10 +62,10 @@ class EventThread extends Thread {
 				return;
 			}
 			try {
-				EventSet eventSet = queue.remove(10000);
+				EventSet eventSet = queue.remove(100000);
 				if(eventSet == null) {
 					System.out.println("System terminated at timeout");
-					return;
+					System.exit(0);
 				}
 				EventIterator it = eventSet.eventIterator();
 				
