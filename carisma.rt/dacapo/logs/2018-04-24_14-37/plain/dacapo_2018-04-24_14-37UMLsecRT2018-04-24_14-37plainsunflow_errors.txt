@@ -1,0 +1,2 @@
+===== DaCapo 9.12-MR1 sunflow starting =====
+===== DaCapo 9.12-MR1 sunflow PASSED in 4456 msec =====

@@ -1,0 +1,2 @@
+===== DaCapo 9.12-MR1 fop starting =====
+===== DaCapo 9.12-MR1 fop PASSED in 1859 msec =====

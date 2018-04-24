@@ -1,13 +1,38 @@
 package carisma.rt;
 
-import com.sun.jdi.*;
-import com.sun.jdi.request.*;
-import com.sun.jdi.event.*;
-
+import java.net.URL;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import org.w3c.dom.events.EventException;
+import com.sun.jdi.ClassType;
+import com.sun.jdi.Field;
+import com.sun.jdi.Method;
+import com.sun.jdi.ThreadReference;
+import com.sun.jdi.VirtualMachine;
+import com.sun.jdi.event.BreakpointEvent;
+import com.sun.jdi.event.ClassPrepareEvent;
+import com.sun.jdi.event.Event;
+import com.sun.jdi.event.EventIterator;
+import com.sun.jdi.event.EventQueue;
+import com.sun.jdi.event.EventSet;
+import com.sun.jdi.event.MethodEntryEvent;
+import com.sun.jdi.event.MethodExitEvent;
+import com.sun.jdi.event.VMDeathEvent;
+import com.sun.jdi.event.WatchpointEvent;
+import com.sun.jdi.request.AccessWatchpointRequest;
+import com.sun.jdi.request.BreakpointRequest;
+import com.sun.jdi.request.ClassPrepareRequest;
+import com.sun.jdi.request.EventRequest;
+import com.sun.jdi.request.EventRequestManager;
+import com.sun.jdi.request.MethodEntryRequest;
+import com.sun.jdi.request.MethodExitRequest;
+import com.sun.jdi.request.ModificationWatchpointRequest;
+import com.sun.jdi.request.VMDeathRequest;
 
 class EventThread extends Thread {
 
@@ -17,8 +42,9 @@ class EventThread extends Thread {
 	private Map<ThreadReference, SecurityCheck> traceMap = new HashMap<>();
 	private Set<EventRequest> eventRequests = new HashSet<>();
 	private final ClassloaderCache cache;
+	private boolean terminate = false;
 
-	EventThread(VirtualMachine vm, Set<String> excludes, Set<String> classpath) {
+	EventThread(VirtualMachine vm, Set<String> excludes, Set<URL> classpath) {
 		super("event-handler");
 		this.vm = vm;
 		this.excludes = excludes;
@@ -29,13 +55,17 @@ class EventThread extends Thread {
 
 	@Override
 	public void run() {
+		System.out.println("Monitoring started");
 		EventQueue queue = vm.eventQueue();
 		while (true) {
+			if(terminate) {
+				return;
+			}
 			try {
 				EventSet eventSet = queue.remove(10000);
 				if(eventSet == null) {
-					System.out.println("System terminated");
-					System.exit(0);
+					System.out.println("System terminated at timeout");
+					return;
 				}
 				EventIterator it = eventSet.eventIterator();
 				
@@ -43,11 +73,8 @@ class EventThread extends Thread {
 					handleEvent(it.nextEvent());
 				}
 				// eventSet.resume();
-				for (ThreadReference r : vm.allThreads()) {
-					if (r.isSuspended())
-						r.resume();
-				}
-			} catch (InterruptedException | VMDisconnectedException e) {
+				vm.resume();
+			} catch (InterruptedException e) {
 				break;
 			}
 		}
@@ -120,8 +147,8 @@ class EventThread extends Thread {
 		} else if (event instanceof ClassPrepareEvent) {
 			prepareClass((ClassPrepareEvent) event);
 		} else if (event instanceof VMDeathEvent) {
-			System.out.println("Sytem terminated");
-			System.exit(0);
+			System.out.println("System terminated at VMDead event");
+			terminate  = true;
 		}
 	}
 
@@ -339,5 +366,21 @@ class EventThread extends Thread {
 				rq.disable();
 			}
 		}
+	}
+
+	public boolean excluded(String name) {
+		for(String exclude : excludes) {
+			if(exclude.endsWith("*")) {
+				if(name.startsWith(exclude.substring(0, exclude.length()-1))) {
+					return true;
+				}
+			}
+			else {
+				if(name.substring(0, name.lastIndexOf('.')).equals(exclude)) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 }

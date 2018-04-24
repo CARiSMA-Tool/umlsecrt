@@ -1,0 +1,7 @@
+Using scaled threading model. 4 processors detected, 4 threads used to drive the workload, in a possible range of [1,64]
+Server thread created
+Loading web application
+Creating client threads
+Waiting for clients to complete
+Client threads complete ... unloading web application
+Server stopped ... iteration complete

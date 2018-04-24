@@ -11,7 +11,6 @@ import java.util.Set;
 import com.sun.jdi.ArrayReference;
 import com.sun.jdi.ClassLoaderReference;
 import com.sun.jdi.ClassNotLoadedException;
-import com.sun.jdi.ClassObjectReference;
 import com.sun.jdi.IncompatibleThreadStateException;
 import com.sun.jdi.InvalidTypeException;
 import com.sun.jdi.InvocationException;
@@ -32,17 +31,8 @@ class ClassloaderCache {
 
 	private final EventThread events;
 
-	ClassloaderCache(Set<String> classpath, ClassLoader parent, EventThread events) {
-		int i = 0;
-		URL[] urls = new URL[classpath.size()];
-		for (String entry : classpath) {
-			try {
-				urls[i++] = new File(entry).toURI().toURL();
-			} catch (MalformedURLException e) {
-				e.printStackTrace();
-			}
-		}
-		this.loader = new ModifiableURLClassLoader(urls, parent);
+	ClassloaderCache(Set<URL> classpath, ClassLoader parent, EventThread events) {
+		this.loader = new ModifiableURLClassLoader(classpath.toArray(new URL[classpath.size()]), parent);
 		this.events = events;
 	}
 
@@ -146,24 +136,7 @@ class ClassloaderCache {
 	// }
 	//
 	Annotations getAnnotations(ReferenceType type, ThreadReference thread) throws Exception {
-		ClassLoaderReference classLoader = type.classLoader();
-
-		Class<?> reflectionClass;
-		if (classLoader == null) {
-			String name = type.name();
-			if (name.startsWith("java.")) { // Classes from java.* have no class loader
-				reflectionClass = loader.loadClass(name);
-			} else {
-				throw new RuntimeException();
-			}
-		} else {
-			ArrayReference urls = (ArrayReference) invokeMethod(thread, classLoader, "getURLs");
-			for (Value value : urls.getValues()) {
-				StringReference path = (StringReference) invokeMethod(thread, (ObjectReference) value, "getPath");
-				loader.addURL(new File(path.value()).toURI().toURL());
-			}
-		}
-		reflectionClass = loadClass(type);
+		Class<?> reflectionClass = loadClass(type, thread);
 
 		if (clazzAnnotations.containsKey(reflectionClass)) {
 			return clazzAnnotations.get(reflectionClass);
@@ -216,18 +189,48 @@ class ClassloaderCache {
 		return returnValue;
 	}
 
-	private Class<?> loadClass(ReferenceType referenceType) throws ClassNotFoundException {
+	private Class<?> loadClass(ReferenceType referenceType, ThreadReference thread) {
 		String classSignature = SignatureHelper.getSignature(referenceType);
 		Class<?> reflectionClass;
 		if (classes.containsKey(referenceType)) {
 			reflectionClass = classes.get(referenceType);
 		} else {
-			if (classSignature.startsWith("[")) {
-				reflectionClass = Class.forName(classSignature, true, loader);
-			} else if (classSignature.endsWith(";")) {
-				reflectionClass = loader.loadClass(classSignature.substring(1, classSignature.length() - 1));
+
+			ClassLoaderReference classLoader = referenceType.classLoader();
+			if (classLoader == null) {
+				String name = referenceType.name();
+				if (name.startsWith("java.")) { // Classes from java.* have no class loader
+					
+				} else {
+					System.err.println("Couldn't load class \""+name+"\" it ahs no class loader.");
+				}
+				try {
+					reflectionClass = loader.loadClass(name);
+				} catch (ClassNotFoundException e) {
+					throw new RuntimeException(e);
+				}
 			} else {
-				reflectionClass = getPrimitive(classSignature);
+				try {
+					if (classSignature.startsWith("[")) {
+						reflectionClass = Class.forName(classSignature, true, loader);
+					} else if (classSignature.endsWith(";")) {
+						reflectionClass = loader.loadClass(classSignature.substring(1, classSignature.length() - 1));
+					} else {
+						reflectionClass = getPrimitive(classSignature);
+					}
+				} catch (ClassNotFoundException e) {
+					try {
+						ArrayReference urls = (ArrayReference) invokeMethod(thread, classLoader, "getURLs");
+						for (Value value : urls.getValues()) {
+							StringReference path = (StringReference) invokeMethod(thread, (ObjectReference) value,
+									"getPath");
+							loader.addURL(new File(path.value()).toURI().toURL());
+						}
+						reflectionClass = loader.loadClass(classSignature.substring(1, classSignature.length() - 1));
+					} catch (MalformedURLException | ClassNotFoundException e1) {
+						throw new RuntimeException(e1);
+					}
+				}
 			}
 			classes.put(referenceType, reflectionClass);
 		}
@@ -263,7 +266,7 @@ class ClassloaderCache {
 		if (classes.containsKey(member.declaringType())) {
 			referenceType = classes.get(member.declaringType());
 		} else {
-			referenceType = loadClass(member.declaringType());
+			referenceType = loadClass(member.declaringType(), thread);
 		}
 		if (clazzAnnotations.containsKey(referenceType)) {
 			return clazzAnnotations.get(referenceType).getEarlyReturn(SignatureHelper.getSignature(member));

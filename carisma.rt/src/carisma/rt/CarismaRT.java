@@ -5,11 +5,20 @@ import com.sun.jdi.Bootstrap;
 import com.sun.jdi.connect.*;
 import java.util.Map;
 import java.util.Set;
+import java.util.jar.JarEntry;
+import java.util.jar.JarInputStream;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FilterInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 public class CarismaRT {
 
@@ -25,16 +34,22 @@ public class CarismaRT {
 	// Class patterns for which we don't want events
 	private String[] excludes = new String[] { "javax.*", "sun.*", "com.sun.*", "jdk.*", "java.*" }; //"java.*"
 
-	private Set<String> classpath = new HashSet<String>();
+	private Set<URL> classpath = new HashSet<URL>();
 
-	public static void main(String[] args) {
-		new CarismaRT(args);
+	public static void main(String[] args) throws MalformedURLException {
+		new CarismaRT(args).run();
 	}
 
 	/**
 	 * Parse the command line arguments. Launch target VM.
+	 * @throws MalformedURLException 
 	 */
-	CarismaRT(String[] args) {
+	public CarismaRT(String[] args) throws MalformedURLException {
+		String[] strings = parseArgs(args);
+		vm = launchTarget(strings);
+	}
+
+	private String[] parseArgs(String[] args) {
 		int inx;
 		for (inx = 0; inx < args.length; ++inx) {
 			String arg = args[inx];
@@ -47,11 +62,14 @@ public class CarismaRT {
 			if (arg.equals("-help")) {
 				usage();
 				System.exit(0);
+			} else if(arg.equals("-java")) {
+				inx++;
+				break;
 			} else {
 				System.err.println("No option: " + arg);
 				usage();
 				System.exit(1);
-			}
+			} 
 		}
 		if (inx >= args.length) {
 			System.err.println("<class> missing");
@@ -59,9 +77,8 @@ public class CarismaRT {
 			System.exit(1);
 		}
 		String[] strings = new String[args.length - inx];
-		System.arraycopy(args, inx, strings, 0, args.length);
-		vm = launchTarget(strings);
-		run();
+		System.arraycopy(args, inx, strings, 0, strings.length);
+		return strings;
 	}
 
 	/**
@@ -69,14 +86,11 @@ public class CarismaRT {
 	 * threads to forward remote error and output streams, resume the remote VM,
 	 * wait for the final event, and shutdown.
 	 */
-	void run() {
-		String[] restrictedPackages = java.security.Security.getProperty("package.access").split(",");
-		Set<String> allExcludes = new HashSet<>(restrictedPackages.length + excludes.length);
-		allExcludes.addAll(Arrays.asList(restrictedPackages));
-		allExcludes.addAll(Arrays.asList(excludes));
+	public void run(OutputStream out, OutputStream err) {
+		Set<String> allExcludes = getRestrictedPackages();
 		EventThread eventThread = new EventThread(vm, allExcludes, classpath);
 		eventThread.start();
-		redirectOutput();
+		redirectOutput(out, err);
 		vm.resume();
 
 		// Shutdown begins when event thread terminates
@@ -86,13 +100,27 @@ public class CarismaRT {
 			outThread.join(); // before we exit
 		} catch (InterruptedException exc) {
 			// we don't interrupt
+			System.err.println("Interruption");
 		}
+	}
+	
+	private void run() {
+		run(System.out, System.err);
+	}
+
+	private Set<String> getRestrictedPackages() {
+		String[] restrictedPackages = java.security.Security.getProperty("package.access").split(",");
+		Set<String> allExcludes = new HashSet<>(restrictedPackages.length + excludes.length);
+		allExcludes.addAll(Arrays.asList(restrictedPackages));
+		allExcludes.addAll(Arrays.asList(excludes));
+		return allExcludes;
 	}
 
 	/**
 	 * Launch target VM. Forward target's output and error.
+	 * @throws MalformedURLException 
 	 */
-	VirtualMachine launchTarget(String[] args) {
+	VirtualMachine launchTarget(String[] args) throws MalformedURLException {
 		LaunchingConnector connector = findLaunchingConnector();
 		Map<String, Connector.Argument> arguments = connectorArguments(connector, args);
 		try {
@@ -106,12 +134,12 @@ public class CarismaRT {
 		}
 	}
 
-	void redirectOutput() {
+	void redirectOutput(OutputStream out, OutputStream err) {
 		Process process = vm.process();
 
 		// Copy target's output and error to our output and error.
-		errThread = new StreamRedirectThread("error reader", process.getErrorStream(), System.err);
-		outThread = new StreamRedirectThread("output reader", process.getInputStream(), System.out);
+		errThread = new StreamRedirectThread("error reader", process.getErrorStream(), err);
+		outThread = new StreamRedirectThread("output reader", process.getInputStream(), out);
 		errThread.start();
 		outThread.start();
 	}
@@ -131,8 +159,9 @@ public class CarismaRT {
 
 	/**
 	 * Return the launching connector's arguments.
+	 * @throws MalformedURLException 
 	 */
-	Map<String, Connector.Argument> connectorArguments(LaunchingConnector connector, String[] args) {
+	Map<String, Connector.Argument> connectorArguments(LaunchingConnector connector, String[] args) throws MalformedURLException {
 		Map<String, Connector.Argument> arguments = connector.defaultArguments();
 
 		Connector.Argument mainArg = arguments.get("main");
@@ -140,40 +169,91 @@ public class CarismaRT {
 		if (mainArg == null || optionsArg == null) {
 			throw new Error("Bad launching connector");
 		}
-		mainArg.setValue(args[0]);
-
-		boolean copy = false;
+		
 		StringBuilder options = new StringBuilder();
-		for (int i = 1; i < args.length; i++) {
+		int i = 0;
+		for (; i < args.length; i++) {
 			String arg = args[i];
 			if (arg.equals("-cp")) {
-				copy = true;
+				arg = args[++i];
+				options.append("-cp");
+				options.append(' ');
+				options.append(arg);
+				for(String cp : arg.split(":")) {
+					classpath.add(new File(cp).toURI().toURL());
+				}
+				
 			} else {
 				if (arg.startsWith("-")) {
-					copy = false;
-				} else {
-					if (copy) {
-						classpath.add(arg);
+					if(arg.equals("-jar")) {
+						try {
+							getClassPathEntriesFromJAR(new FileInputStream(args[i+1]),args[i+1]);
+						} catch (FileNotFoundException e) {
+							e.printStackTrace();
+						}
+						classpath.add(new URL("file:jar:"+args[i+1]+"!/"));
+						break;
 					}
+					else {
+						
+					}
+				} else {
+					break;
 				}
 			}
-			options.append(arg);
-			options.append(' ');
 		}
 		optionsArg.setValue(options.toString());
+		
+
+		StringBuilder main = new StringBuilder();
+		for( ; i< args.length; i++) {
+			main.append(args[i]);
+			main.append(' ');
+		}
+		mainArg.setValue(main.toString());
 
 		return arguments;
+	}
+
+	private void getClassPathEntriesFromJAR(InputStream stream, String path) {
+		try(JarInputStream entries = new JarInputStream(stream)){
+			JarEntry entry;
+			while((entry = entries.getNextJarEntry())!=null) {
+				String name = entry.getName();
+				if(name.endsWith(".class")) {
+					int lastIndexOf = 1;
+					String substring = name;
+					do {
+						lastIndexOf = substring.lastIndexOf('/');
+						substring = (lastIndexOf > 0 ? substring.substring(0, lastIndexOf) : "");
+						classpath.add(new URL("jar:file:"+path+"!/"+ substring +'/'));
+					}
+					while (lastIndexOf > 0);
+				}
+				else if (name.endsWith(".jar")) {
+					 FilterInputStream inner = new FilterInputStream(entries) {
+			                public void close() throws IOException {
+			                    // ignore the close
+			                }
+			            };
+					getClassPathEntriesFromJAR(inner, path+"!/"+entry.getName());
+				}
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**
 	 * Print command line usage help
 	 */
 	void usage() {
-		System.err.println("Usage: java Trace <options> <class> <args>");
+		System.err.println("Usage: java Trace <options> -java <java-options> [<class> | -jar <path>] <args>");
 		System.err.println("<options> are:");
 		System.err.println("  -all                 Include system classes in output");
 		System.err.println("  -help                Print this help message");
 		System.err.println("<class> is the program to trace");
-		System.err.println("<args> are the arguments to <class>");
+		System.err.println("<path> is the path of the jar file containing the program to trace");
+		System.err.println("<args> are the arguments to the executed program");
 	}
 }

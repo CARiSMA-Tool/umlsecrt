@@ -1,0 +1,3 @@
+Successfully created tables
+===== DaCapo 9.12-MR1 tradebeans starting =====
+===== DaCapo 9.12-MR1 tradebeans PASSED in 6232 msec =====

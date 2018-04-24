@@ -5,8 +5,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Stack;
 
-import org.omg.CORBA.VM_ABSTRACT;
-
 import com.sun.jdi.AbsentInformationException;
 import com.sun.jdi.ClassNotLoadedException;
 import com.sun.jdi.ClassObjectReference;
@@ -14,7 +12,6 @@ import com.sun.jdi.Field;
 import com.sun.jdi.IncompatibleThreadStateException;
 import com.sun.jdi.InvalidTypeException;
 import com.sun.jdi.InvocationException;
-import com.sun.jdi.LocalVariable;
 import com.sun.jdi.Method;
 import com.sun.jdi.ObjectReference;
 import com.sun.jdi.ReferenceType;
@@ -31,6 +28,7 @@ import com.sun.jdi.event.WatchpointEvent;
 
 class SecurityCheck {
 
+	private static final boolean RUNTIME = false;
 	private final Stack<TypeComponent> stack;
 	private final ClassloaderCache cache;
 	private final EventThread events;
@@ -38,6 +36,7 @@ class SecurityCheck {
 	private boolean record = false;
 	private final String trace;
 	private String intend = "";
+	private long timeAll = 0, timeSecurity = 0, timeClassLoader = 0, timeBreakpoint = 0, timeAnnotations = 0;
 
 	SecurityCheck(ClassloaderCache cache, EventThread events, String traceLocation) {
 		this.stack = new Stack<TypeComponent>();
@@ -46,28 +45,9 @@ class SecurityCheck {
 		this.trace = traceLocation;
 	}
 
-	private void enableTraceRecord(TypeComponent caller, TypeComponent called) {
-		record = true;
-		try (FileWriter writer = new FileWriter(trace)) {
-			int indexOf = stack.indexOf(caller);
-			if (indexOf > 0) {
-				writer.append(SignatureHelper.getSignature(stack.get(indexOf - 1)));
-				writer.append(System.lineSeparator());
-				writer.append("--");
-			}
-			writer.append(SignatureHelper.getSignature(caller));
-			writer.append(System.lineSeparator());
-			writer.append("--");
-			writer.append(SignatureHelper.getSignature(called));
-			writer.append(" <---- Violation of SecureDependencies");
-			writer.append(System.lineSeparator());
-			intend = "----";
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
 	void methodEntryEvent(MethodEntryEvent event) {
+		long tmp = System.nanoTime();
+
 		Method method = event.method();
 		if (record) {
 			try (FileWriter writer = new FileWriter(trace, true)) {
@@ -112,21 +92,44 @@ class SecurityCheck {
 					}
 				}
 			} catch (Exception e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 
 		}
+		timeAll += System.nanoTime() - tmp;
 	}
 
 	void methodExitEvent(MethodExitEvent event) {
+		long tmp = System.nanoTime();
 		stack.pop();
 		if (record && intend.length() >= 2) {
 			intend = intend.substring(2);
 		}
+		timeAll += System.nanoTime() - tmp;
+		if (RUNTIME)
+			try (FileWriter writer = new FileWriter(trace.replace(".txt", "_times.txt"))) {
+				writer.append("timeAll [ms]: ");
+				writer.append(Long.toString(timeAll / 1000 / 1000));
+				writer.append('\n');
+
+				writer.append("timeAnnotations [ms]: ");
+				writer.append(Long.toString(timeAnnotations / 1000 / 1000));
+				writer.append('\n');
+
+				writer.append("timeSecurity [ms]: ");
+				writer.append(Long.toString(timeSecurity / 1000 / 1000));
+				writer.append('\n');
+
+				writer.append("timeClassLoader [ms]: ");
+				writer.append(Long.toString(timeClassLoader / 1000 / 1000));
+				writer.append('\n');
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 	}
 
 	void fieldEvent(WatchpointEvent event) {
+		long tmp = System.nanoTime();
 		ThreadReference thread = event.thread();
 		Field field = event.field();
 		if (record) {
@@ -163,9 +166,75 @@ class SecurityCheck {
 
 		}
 		stack.pop();
+		timeAll += System.nanoTime() - tmp;
+	}
+
+	void breakpointEvent(BreakpointEvent breakpointEvent) {
+		if (stack.isEmpty()) {
+			return;
+		}
+		long tmp = System.nanoTime();
+		Method method = breakpointEvent.location().method();
+		if (!"java.lang.reflect.Field".equals(method.declaringType().name())) {
+			return;
+		}
+		if ("get".equals(method.name()) || "set".equals(method.name())) {
+			try {
+				ObjectReference field = breakpointEvent.thread().frame(0).thisObject();
+				events.disableEventRequests();
+				ClassObjectReference value = (ClassObjectReference) field.invokeMethod(breakpointEvent.thread(),
+						method.declaringType().methodsByName("getDeclaringClass").get(0), Collections.emptyList(), 0);
+
+				if (events.excluded(value.referenceType().name())) {
+					return;
+				}
+
+				timeBreakpoint += System.nanoTime() - tmp;
+				System.out.println("Time at breakpoints =  " + timeBreakpoint / 1000 / 1000);
+
+				Annotations accessedField = cache.getAnnotations(value.reflectedType(), breakpointEvent.thread());
+				Annotations callerAnnotations = cache.getAnnotations(stack.peek().declaringType(),
+						breakpointEvent.thread());
+
+				StringReference fieldName = (StringReference) field.invokeMethod(breakpointEvent.thread(),
+						method.declaringType().methodsByName("getName").get(0), Collections.emptyList(), 0);
+				String lhsSignature = SignatureHelper.getSignature(stack.peek());
+				String rhsSignature = SignatureHelper
+						.getSignature(value.reflectedType().fieldByName(fieldName.value()));
+				checkSecureDependencies(lhsSignature, rhsSignature, callerAnnotations, accessedField);
+			} catch (Exception e) {
+				e.printStackTrace();
+			} finally {
+				events.enableEventRequests();
+			}
+
+		}
+		timeAll += System.nanoTime() - tmp;
+	}
+
+	private void enableTraceRecord(TypeComponent caller, TypeComponent called) {
+		record = true;
+		try (FileWriter writer = new FileWriter(trace)) {
+			int indexOf = stack.indexOf(caller);
+			if (indexOf > 0) {
+				writer.append(SignatureHelper.getSignature(stack.get(indexOf - 1)));
+				writer.append(System.lineSeparator());
+				writer.append("--");
+			}
+			writer.append(SignatureHelper.getSignature(caller));
+			writer.append(System.lineSeparator());
+			writer.append("--");
+			writer.append(SignatureHelper.getSignature(called));
+			writer.append(" <---- Violation of SecureDependencies");
+			writer.append(System.lineSeparator());
+			intend = "----";
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private boolean checkSecureDependencies(TypeComponent member, ThreadReference thread) {
+		long tmp = System.nanoTime();
 		if (!thread.isSuspended()) {
 			thread.suspend();
 		}
@@ -182,8 +251,12 @@ class SecurityCheck {
 			Annotations annotations = cache.getAnnotations(thisType, thread);
 			Annotations callerAnnotations = cache.getAnnotations(callerType, thread);
 
-			boolean results = checkSecureDependencies(SignatureHelper.getSignature(caller),
-					SignatureHelper.getSignature(member), callerAnnotations, annotations);
+			String callerSignature = SignatureHelper.getSignature(caller);
+			String calledSignature = SignatureHelper.getSignature(member);
+
+			timeClassLoader += System.nanoTime() - tmp;
+
+			boolean results = checkSecureDependencies(callerSignature, calledSignature, callerAnnotations, annotations);
 			if (!results) {
 				enableTraceRecord(caller, member);
 			}
@@ -198,6 +271,8 @@ class SecurityCheck {
 
 	private boolean checkSecureDependencies(String lhsMemberSignature, String rhsMemberSignature,
 			Annotations lhsAnnotations, Annotations rhsAnnotations) {
+//		System.out.println(lhsMemberSignature + " --> " + rhsMemberSignature);
+		long tmp = System.nanoTime();
 
 		boolean lhsRequiresRhsSecrecy = lhsAnnotations.hasSecrecy(rhsMemberSignature);
 		boolean rhsRequiresRhsSecrecy = rhsAnnotations.hasSecrecy(rhsMemberSignature);
@@ -210,6 +285,7 @@ class SecurityCheck {
 				System.err.println("Violation of Secrecy: \"" + rhsMemberSignature + "\" requires secrecy but \""
 						+ lhsMemberSignature + "\" doesn't provides secrecy!");
 			}
+			timeSecurity += System.nanoTime() - tmp;
 			return false;
 		}
 
@@ -224,8 +300,10 @@ class SecurityCheck {
 				System.err.println("Violation of Integrity: \"" + rhsMemberSignature + "\" requires integrity but \""
 						+ lhsMemberSignature + "\" doesn't provides integrity!");
 			}
+			timeSecurity += System.nanoTime() - tmp;
 			return false;
 		}
+		timeSecurity += System.nanoTime() - tmp;
 		return true;
 	}
 
@@ -283,33 +361,6 @@ class SecurityCheck {
 			}
 		}
 		return value;
-	}
-
-	public void breakpointEvent(BreakpointEvent breakpointEvent) {
-		Method method = breakpointEvent.location().method();
-		if (!"java.lang.reflect.Field".equals(method.declaringType().name())) {
-			return;
-		}
-		if ("get".equals(method.name()) || "set".equals(method.name())) {
-			try {
-				ObjectReference field = breakpointEvent.thread().frame(0).thisObject();
-				events.disableEventRequests();
-				ClassObjectReference value = (ClassObjectReference) field.invokeMethod(breakpointEvent.thread(), method.declaringType().methodsByName("getDeclaringClass").get(0), Collections.emptyList(), 0);
-				Annotations accessedField = cache.getAnnotations(value.reflectedType(), breakpointEvent.thread());
-				Annotations callerAnnotations = cache.getAnnotations(stack.peek().declaringType(), breakpointEvent.thread());
-				
-				StringReference fieldName = (StringReference) field.invokeMethod(breakpointEvent.thread(), method.declaringType().methodsByName("getName").get(0), Collections.emptyList(), 0);
-				String lhsSignature = SignatureHelper.getSignature(stack.peek());
-				String rhsSignature = SignatureHelper.getSignature(value.reflectedType().fieldByName(fieldName.value()));
-				checkSecureDependencies(lhsSignature, rhsSignature, callerAnnotations, accessedField);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			finally{
-				events.enableEventRequests();
-			}
-			
-		}
 	}
 
 }

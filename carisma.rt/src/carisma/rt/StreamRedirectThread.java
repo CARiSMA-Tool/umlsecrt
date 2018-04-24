@@ -42,7 +42,7 @@ import java.io.*;
  *
  * @author Robert Field
  */
-class StreamRedirectThread extends Thread {
+public class StreamRedirectThread extends Thread {
 
     private final Reader in;
     private final Writer out;
@@ -55,7 +55,7 @@ class StreamRedirectThread extends Thread {
      * @param in    Stream to copy from
      * @param out   Stream to copy to
      */
-    StreamRedirectThread(String name, InputStream in, OutputStream out) {
+    public StreamRedirectThread(String name, InputStream in, OutputStream out) {
         super(name);
         this.in = new InputStreamReader(in);
         this.out = new OutputStreamWriter(out);

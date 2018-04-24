@@ -1,5 +1,9 @@
 package carisma.rt.test;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.MalformedURLException;
+
 import org.junit.Test;
 
 import carisma.rt.CarismaRT;
@@ -7,22 +11,32 @@ import carisma.rt.CarismaRT;
 public class Tests {
 
 	@Test
-	public void paperExample() {
-		CarismaRT.main(new String[] { "malware.MaliciousApplication", "-cp", "../examples/PaperExample/bin"});
-	}
-	
-	@Test
-	public void codeInjection() {
-		CarismaRT.main(new String[] { "example.CodeInjection", "-cp", "../examples/CodeInjection/bin"});
-	}
-	
-	@Test
-	public void javaReflection() {
-		CarismaRT.main(new String[] {"example.A", "-cp", "../examples/JavaReflection/bin"});
+	public void paperExample() throws MalformedURLException {
+		CarismaRT.main(new String[] { "-java", "-cp", "../examples/PaperExample/bin", "malware.MaliciousApplication" });
 	}
 
 	@Test
-	public void javaReflectionFieldAccess() {
-		CarismaRT.main(new String[] {"example.A2", "-cp", "../examples/JavaReflection/bin"});
+	public void codeInjection() throws MalformedURLException {
+		CarismaRT.main(new String[] { "-java", "-cp", "../examples/CodeInjection/bin", "example.CodeInjection" });
+	}
+
+	@Test
+	public void javaReflection() throws MalformedURLException {
+		try (FileOutputStream out = new FileOutputStream("reflection.txt");
+				FileOutputStream err = new FileOutputStream("reflection_err.txt")) {
+			new CarismaRT(new String[] { "-java", "-cp", "../examples/JavaReflection/bin", "example.A" }).run(out,
+					err);
+		} catch (IOException e) {
+
+		}
+	}
+
+	@Test
+	public void javaReflectionFieldAccess() throws Exception {
+		try (FileOutputStream out = new FileOutputStream("reflection.txt");
+				FileOutputStream err = new FileOutputStream("reflection_err.txt")) {
+			new CarismaRT(new String[] { "-java", "-cp", "../examples/JavaReflection/bin", "example.A2" }).run(out,
+					err);
+		}
 	}
 }
