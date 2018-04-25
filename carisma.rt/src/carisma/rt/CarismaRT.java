@@ -27,12 +27,6 @@ public class CarismaRT {
 	// Running remote VM
 	private final VirtualMachine vm;
 
-	// Thread transferring remote error stream to our error stream
-	private Thread errThread = null;
-
-	// Thread transferring remote output stream to our output stream
-	private Thread outThread = null;
-
 	// Class patterns for which we don't want events
 	private String[] excludes = new String[] { "javax.*", "sun.*", "com.sun.*", "jdk.*", "java.*" }; //"java.*"
 

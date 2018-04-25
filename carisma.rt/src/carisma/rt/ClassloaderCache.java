@@ -227,7 +227,11 @@ class ClassloaderCache {
 							loader.addURL(new File(path.value()).toURI().toURL());
 						}
 						reflectionClass = loader.loadClass(classSignature.substring(1, classSignature.length() - 1));
-					} catch (MalformedURLException | ClassNotFoundException e1) {
+					} catch (MalformedURLException e1) {
+						throw new RuntimeException(e1);
+					}
+					catch (ClassNotFoundException e1) {
+						System.err.println("Couldn't load class for name: "+referenceType.name()+" signature: "+classSignature);
 						throw new RuntimeException(e1);
 					}
 				}

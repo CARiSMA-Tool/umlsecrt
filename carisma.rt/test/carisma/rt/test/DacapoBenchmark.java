@@ -22,7 +22,7 @@ import carisma.rt.StreamRedirectThread;
 @RunWith(Parameterized.class)
 public class DacapoBenchmark {
 
-	private static final String[] BENCHMARKS = new String[] { "luindex", "lusearch", "fop", "xalan", "pmd",
+	private static final String[] BENCHMARKS = new String[] {/*"luindex",*/ "lusearch", "fop", "xalan", "pmd",
 			"tradebeans", "sunflow", "fop", "tomcat", "jython", "avrora", "h2", "tradesoap", "eclipse", "batik" };
 	private static final String DACAPO = "dacapo/dacapo-9.12-MR1-bach.jar";
 	private String testcase;
