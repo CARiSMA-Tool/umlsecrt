@@ -123,8 +123,8 @@ class SecurityCheck {
 		if (!checkSecureDependencies(field, thread)) {
 			String earlyReturn;
 			try {
-				earlyReturn = cache.getEarlyReturn(field, thread).trim();
-				if (earlyReturn.length() == 0) {
+				earlyReturn = cache.getEarlyReturn(field, thread);
+				if (earlyReturn == null ||(earlyReturn = earlyReturn.trim()).length() == 0) {
 					System.exit(-1);
 				} else {
 					try {
@@ -135,7 +135,6 @@ class SecurityCheck {
 					}
 				}
 			} catch (Exception e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 
@@ -154,12 +153,12 @@ class SecurityCheck {
 		}
 		if ("get".equals(method.name()) || "set".equals(method.name())) {
 			try {
-				ObjectReference field = breakpointEvent.thread().frame(0).thisObject();
+				ObjectReference object = breakpointEvent.thread().frame(0).thisObject();
 				events.disableEventRequests();
-				ClassObjectReference value = (ClassObjectReference) field.invokeMethod(breakpointEvent.thread(),
+				ClassObjectReference value = (ClassObjectReference) object.invokeMethod(breakpointEvent.thread(),
 						method.declaringType().methodsByName("getDeclaringClass").get(0), Collections.emptyList(), 0);
 
-				if (events.excluded(value.referenceType().name())) {
+				if (events.excluded(value.reflectedType().name())) {
 					return;
 				}
 
@@ -167,12 +166,31 @@ class SecurityCheck {
 				Annotations callerAnnotations = cache.getAnnotations(stack.peek().declaringType(),
 						breakpointEvent.thread());
 
-				StringReference fieldName = (StringReference) field.invokeMethod(breakpointEvent.thread(),
+				StringReference fieldName = (StringReference) object.invokeMethod(breakpointEvent.thread(),
 						method.declaringType().methodsByName("getName").get(0), Collections.emptyList(), 0);
 				String lhsSignature = SignatureHelper.getSignature(stack.peek());
+				Field field = value.reflectedType().fieldByName(fieldName.value());
 				String rhsSignature = SignatureHelper
-						.getSignature(value.reflectedType().fieldByName(fieldName.value()));
-				checkSecureDependencies(lhsSignature, rhsSignature, callerAnnotations, accessedField);
+						.getSignature(field);
+				if(!checkSecureDependencies(lhsSignature, rhsSignature, callerAnnotations, accessedField)) {
+					ThreadReference thread = breakpointEvent.thread();
+					String earlyReturn;
+					try {
+						earlyReturn = cache.getEarlyReturn(field, thread);
+						if (earlyReturn == null ||(earlyReturn = earlyReturn.trim()).length() == 0) {
+							System.exit(-1);
+						} else {
+							try {
+								Value counterMeausrevalue = getCounterMeasureValue(field, thread, earlyReturn);
+								object.setValue(field, counterMeausrevalue);
+							} catch (InvalidTypeException | ClassNotLoadedException | IncompatibleThreadStateException e) {
+								e.printStackTrace();
+							}
+						}
+					} catch (Exception e1) {
+						e1.printStackTrace();
+					}
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			} finally {

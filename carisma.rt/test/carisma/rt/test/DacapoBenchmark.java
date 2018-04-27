@@ -65,7 +65,7 @@ public class DacapoBenchmark {
 
 	@Test//(timeout = 300000)
 	public void dacapoUMLsecRT() throws MalformedURLException {
-		System.out.println("Start Benchmark: " + testcase);
+		System.out.println(timestamp+" - Start Benchmark: " + testcase);
 		String folder = "dacapo/logs/"+timestamp+"/umlsecrt/";
 		new File(folder).mkdirs();
 		String prefix = folder+"dacapo_" + timestamp + "_UMLsecRT_";
