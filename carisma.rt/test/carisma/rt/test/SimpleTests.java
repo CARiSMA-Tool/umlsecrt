@@ -27,9 +27,4 @@ public class SimpleTests {
 	public void paperExample() throws MalformedURLException {
 		CarismaRT.main(new String[] { "-java", "-cp", "../examples/PaperExample/bin", "malware.MaliciousApplication" });
 	}
-
-	@Test
-	public void codeInjection() throws MalformedURLException {
-		CarismaRT.main(new String[] { "-java", "-cp", "../examples/CodeInjection/bin", "example.CodeInjection" });
-	}
 }

@@ -6,6 +6,5 @@ Bundle-Version: 1.0.0.qualifier
 Bundle-ClassPath: lib/tools-openjdk.jar
 Export-Package: carisma.rt
 Require-Bundle: org.gravity.security.annotations,
- org.junit,
- CodeInjection
+ org.junit
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8

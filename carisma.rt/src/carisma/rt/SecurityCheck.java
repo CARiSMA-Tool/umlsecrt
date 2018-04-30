@@ -47,6 +47,12 @@ class SecurityCheck {
 		
 
 		Method method = event.method();
+		
+		if(cache.isCounterMeasure(method, event.thread())) {
+			System.err.println("Tried to use counter measure \"\"in regular program execution!");
+			System.exit(-1);
+		}
+		
 		if (record) {
 			try (FileWriter writer = new FileWriter(trace, true)) {
 				writer.append(intend);

@@ -4,9 +4,12 @@ import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Set;
+
+import org.gravity.security.annotations.CounterMeasure;
 
 import com.sun.jdi.ArrayReference;
 import com.sun.jdi.ClassLoaderReference;
@@ -26,6 +29,7 @@ class ClassloaderCache {
 
 	private Hashtable<ReferenceType, Class<?>> classes = new Hashtable<>();
 	private Hashtable<Class<?>, Annotations> clazzAnnotations = new Hashtable<>();
+	private final HashSet<String> counterMeasures = new HashSet<>();
 
 	private final ModifiableURLClassLoader loader;
 
@@ -238,6 +242,11 @@ class ClassloaderCache {
 			}
 			classes.put(referenceType, reflectionClass);
 		}
+		for(java.lang.reflect.Method m : reflectionClass.getDeclaredMethods()) {
+			if(m.getDeclaredAnnotationsByType(CounterMeasure.class).length > 0) {
+				counterMeasures.add(SignatureHelper.getSignature(m));
+			}
+		}
 		return reflectionClass;
 	}
 
@@ -279,5 +288,12 @@ class ClassloaderCache {
 			clazzAnnotations.put(referenceType, annotations);
 			return annotations.getEarlyReturn(SignatureHelper.getSignature(member));
 		}
+	}
+	
+	public boolean isCounterMeasure(Method method, ThreadReference thread) {
+		if (!classes.containsKey(method.declaringType())) {
+			loadClass(method.declaringType(), thread);
+		}
+		return counterMeasures.contains(SignatureHelper.getSignature(method));
 	}
 }
