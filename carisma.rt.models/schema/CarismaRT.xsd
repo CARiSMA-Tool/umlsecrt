@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<xsd:schema xmlns:this="http:///carisma.rt.models/schema/CarismaRT.xsd" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http:///carisma.rt.models/schema/CarismaRT.xsd">
+  <xsd:element name="umlsecrt">
+    <xsd:complexType>
+      <xsd:sequence>
+        <xsd:element name="applicationName" type="xsd:string"/>
+        <xsd:element name="applicationLocation" type="xsd:string"/>
+        <xsd:element name="accesses">
+          <xsd:complexType>
+            <xsd:sequence>
+              <xsd:element name="violations">
+                <xsd:complexType>
+                  <xsd:sequence>
+                    <xsd:element maxOccurs="unbounded" minOccurs="1" name="property">
+                      <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                          <xsd:pattern value="secrecy|integrity"/>
+    					</xsd:restriction>
+                      </xsd:simpleType>
+                    </xsd:element>
+                  </xsd:sequence>
+                </xsd:complexType>
+              </xsd:element>
+              <xsd:element maxOccurs="unbounded" minOccurs="1" name="member">
+                <xsd:complexType>
+                  <xsd:sequence>
+                    <xsd:element name="classSignature" type="xsd:string"/>
+                    <xsd:element name="memberSiganture" type="xsd:string"/>
+                    <xsd:element name="binPath" type="xsd:string"/>
+                  </xsd:sequence>
+                </xsd:complexType>
+              </xsd:element>
+            </xsd:sequence>
+          </xsd:complexType>
+        </xsd:element>
+      </xsd:sequence>
+    </xsd:complexType>
+  </xsd:element>
+</xsd:schema>

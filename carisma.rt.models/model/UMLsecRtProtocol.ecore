@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="protocol" nsURI="platform:/plugin/carisma.rt.models/model/UMLsecRtProtocol.ecore"
+    nsPrefix="carisma.rt.models.protocol">
+  <eClassifiers xsi:type="ecore:EClass" name="RTClass" eSuperTypes="#//RTType"/>
+  <eClassifiers xsi:type="ecore:EClass" name="RTMember" abstract="true" eSuperTypes="#//RTNamedElement">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="accesses" upperBound="-1"
+        eType="#//RTAccess" containment="true" eOpposite="#//RTAccess/source"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="owner" eType="#//RTType"
+        eOpposite="#//RTType/members"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="RTMethod" eSuperTypes="#//RTMember"/>
+  <eClassifiers xsi:type="ecore:EClass" name="RTField" eSuperTypes="#//RTMember"/>
+  <eClassifiers xsi:type="ecore:EClass" name="RTNamedElement" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="RTType" abstract="true" eSuperTypes="#//RTNamedElement">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="members" upperBound="-1"
+        eType="#//RTMember" containment="true" eOpposite="#//RTMember/owner"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="RTProtocol">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="program" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="location" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="classes" upperBound="-1"
+        eType="#//RTType" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="firstAccess" eType="#//RTAccess"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="date" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="RTAccess">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="target" eType="#//RTMember"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="next" eType="#//RTAccess"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" eType="#//RTMember"
+        eOpposite="#//RTMember/accesses"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="violations" upperBound="-1"
+        eType="#//RTSecurity"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="RTSecurity">
+    <eLiterals name="RTSecrecy"/>
+    <eLiterals name="RTIntegrity"/>
+  </eClassifiers>
+</ecore:EPackage>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.0"?>
+
+<!--
+-->
+
+<plugin>
+
+   <extension point="org.eclipse.emf.ecore.generated_package">
+      <!-- @generated UMLsecRtProtocol -->
+      <package
+            uri="platform:/plugin/carisma.rt.models/model/UMLsecRtProtocol.ecore"
+            class="carisma.rt.models.protocol.ProtocolPackage"
+            genModel="model/UMLsecRtProtocol.genmodel"/>
+   </extension>
+
+</plugin>

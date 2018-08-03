@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="ASCII"?>
+<carisma.rt.models.protocol:RTProtocol xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:carisma.rt.models.protocol="platform:/plugin/carisma.rt.models/model/UMLsecRtProtocol.ecore" program="Classloader" location="/home/speldszus/Documents/svn/rgse/umlsecrt/implementation/examples/Classloader/bin" date="2018-07-31_13-30">
+  <classes xsi:type="carisma.rt.models.protocol:RTClass" name="malware.MalwareFieldRead" path="/home/speldszus/Documents/svn/rgse/umlsecrt/implementation/examples/Classloader/bin/">
+    <members xsi:type="carisma.rt.models.protocol:RTMethod" name="main(java.lang.String[]):void">
+      <accesses target="//@classes.1/@members.0" next="//@classes.1/@members.0/@accesses.0"/>
+    </members>
+  </classes>
+  <classes xsi:type="carisma.rt.models.protocol:RTClass" name="tests.FieldRead" path="/home/speldszus/Documents/svn/rgse/umlsecrt/implementation/carisma.rt/../examples/Classloader/malware/">
+    <members xsi:type="carisma.rt.models.protocol:RTMethod" name="&lt;init>():void">
+      <accesses target="//@classes.2/@members.0">
+        <violations>RTSecrecy</violations>
+      </accesses>
+    </members>
+  </classes>
+  <classes xsi:type="carisma.rt.models.protocol:RTClass" name="secret.Secret" path="/home/speldszus/Documents/svn/rgse/umlsecrt/implementation/examples/Classloader/bin/">
+    <members xsi:type="carisma.rt.models.protocol:RTField" name="secret:java.lang.String"/>
+  </classes>
+  <firstAccess target="//@classes.0/@members.0" next="//@classes.0/@members.0/@accesses.0"/>
+</carisma.rt.models.protocol:RTProtocol>

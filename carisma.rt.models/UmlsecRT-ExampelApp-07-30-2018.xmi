@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="ASCII"?>
+<carisma.rt.models.protocol:RTProtocol xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:carisma.rt.models.protocol="platform:/plugin/carisma.rt.models/model/UMLsecRtProtocol.ecore" program="ExampelApp" location="/home/" date="07-30-2018">
+  <classes xsi:type="carisma.rt.models.protocol:RTClass" name="example.Foo" path="example/Foo.class">
+    <members xsi:type="carisma.rt.models.protocol:RTMethod" name="m()">
+      <accesses target="//@classes.1/@members.0"/>
+    </members>
+  </classes>
+  <classes xsi:type="carisma.rt.models.protocol:RTClass" name="example.Bar" path="../malware/example/Bar.class">
+    <members xsi:type="carisma.rt.models.protocol:RTMethod" name="n()"/>
+  </classes>
+  <firstAccess target="//@classes.0/@members.0" next="//@classes.0/@members.0/@accesses.0"/>
+</carisma.rt.models.protocol:RTProtocol>

@@ -1,0 +1,17 @@
+{
+  "date": "07-30-2018",
+  "application": "ExampelApp",
+  "location": "/home/",
+  "calls": [
+    {
+      "class":"example.Foo",
+      "member":"m()",
+      "bin":"example/Foo.class"
+    },
+    {
+      "class":"example.Bar",
+      "member":"n()",
+      "bin":"../malware/example/Bar.class"
+    }
+  ]
+}
