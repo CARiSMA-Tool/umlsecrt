@@ -85,47 +85,63 @@ public class RTTransformer implements ClassFileTransformer {
 		if (hasSecrecy) {
 			secrecy.add(ctBehavior.getLongName());
 		}
-		if (hasSecrecy || classSecrecy.contains(ctBehavior.getLongName())) {
-			// Insert check for secrecy of caller
-		}
 		
 		ArrayList<String> integrity = new ArrayList<>(classIntegrity);
 		boolean hasIntegrity = ctBehavior.getAnnotation(Integrity.class) != null;
 		if (hasIntegrity) {
 			integrity.add(ctBehavior.getLongName());
 		}
-		if (hasIntegrity || classIntegrity.contains(ctBehavior.getLongName())) {
-			// Insert check for integrity of caller
-		}
 		
-		String before = 
-				"try{"
+		String before =	"try{"
 					+ "System.out.println(\"\");"
+					
 					+ "java.net.URLClassLoader loader = java.net.URLClassLoader.newInstance(new java.net.URL[]{new java.net.URL(\""+url+"\")});"
 					+ "java.util.Stack s = ((java.util.Stack) loader.loadClass(\"carisma.rt.instrument.RTStack\").getDeclaredField(\"stack\").get(null));"
-					+ "if(!s.isEmpty()){"
+										
+					+ "java.util.Set secrecySet = new java.util.HashSet();"
+					+ "java.util.Set integritySet = new java.util.HashSet();";
+					for(String s : secrecy) {
+						before += "secrecySet.add(\"" + s + "\");";
+					}
+					for(String s : integrity) {
+						before += "integritySet.add(\"" + s + "\");";
+					}
+								
+					before += "if(!s.isEmpty()){"
 						+ "java.lang.Object annot = s.peek();"
 						+ "java.lang.String caller = (java.lang.String) annot.getClass().getDeclaredMethod(\"getMethod\", new java.lang.Class[0]).invoke(annot, new java.lang.Object[0]);"
 						+ "java.util.Set secrecy = (java.util.Set) annot.getClass().getDeclaredMethod(\"getSecrecy\", new java.lang.Class[0]).invoke(annot, new java.lang.Object[0]);"
-						+ "java.util.Set integrity = (java.util.Set) annot.getClass().getDeclaredMethod(\"getIntegrity\", new java.lang.Class[0]).invoke(annot, new java.lang.Object[0]);"
-						+ "System.out.println(\"[Instrumentation] prev method: \"+ caller+\" secrecy=\"+secrecy+\" integrity=\"+integrity);"
-					+ "}"
-					+ "java.lang.Class cRTAnnotation = loader.loadClass(\"carisma.rt.instrument.RTStack$RTAnnotation\");"
-					+ "java.lang.reflect.Constructor constr = cRTAnnotation.getDeclaredConstructor(new java.lang.Class[]{java.lang.String.class, java.util.Set.class, java.util.Set.class});"
-					+ "java.util.Set secrecySet = new java.util.HashSet();"
-					+ "java.util.Set integritySet = new java.util.HashSet();";
+						+ "java.util.Set integrity = (java.util.Set) annot.getClass().getDeclaredMethod(\"getIntegrity\", new java.lang.Class[0]).invoke(annot, new java.lang.Object[0]);";
 
-		for(String s : secrecy) {
-			before += "secrecySet.add(\"" + s + "\");";
+		if (hasIntegrity || classIntegrity.contains(ctBehavior.getLongName())) {
+			before += "if(!integrity.contains(\""+ctBehavior.getLongName()+"\")){"
+						+ "System.err.println(\"[SECURITY VIOLATION INTEGRITY] - Kind 1\");"
+					+ "}";
 		}
-		for(String s : integrity) {
-			before += "integritySet.add(\"" + s + "\");";
+		if (hasSecrecy || classSecrecy.contains(ctBehavior.getLongName())) {
+			before += "if(!secrecy.contains(\""+ctBehavior.getLongName()+"\")){"
+						+ "System.err.println(\"[SECURITY VIOLATION SECRECY] - Kind 1\");"
+					+ "}";
 		}
 		
-		before += "java.lang.Object o = constr.newInstance(new java.lang.Object[]{\""+ctBehavior.getLongName()+"\", secrecySet, integritySet});"
-					+ "s.add(o);"
-					+ "System.out.println(\"[Instrumentation] this method: "+ctBehavior.getLongName()+" secrecy=\"+secrecySet+\" integrity=\"+integritySet);"
-				+ "}catch(Exception e) {e.printStackTrace();}";
+		before += "if(secrecy.contains(caller) && !secrecySet.contains(caller)){"
+					+ "System.err.println(\"[SECURITY VIOLATION SECRECY] - Kind 2\");"
+				+ "}"
+				+ "if(integrity.contains(caller) && !integritySet.contains(caller)){"
+					+ "System.err.println(\"[SECURITY VIOLATION INTEGRITY] - Kind 2\");"
+				+ "}";
+		
+			before += "System.out.println(\"[Instrumentation] prev method: \"+ caller+\" secrecy=\"+secrecy+\" integrity=\"+integrity);"
+					+"}"
+				+ "System.out.println(\"[Instrumentation] this method: "+ctBehavior.getLongName()+" secrecy=\"+secrecySet+\" integrity=\"+integritySet);";
+
+			
+			before += "java.lang.Class cRTAnnotation = loader.loadClass(\"carisma.rt.instrument.RTStack$RTAnnotation\");"
+					+ "java.lang.reflect.Constructor constr = cRTAnnotation.getDeclaredConstructor(new java.lang.Class[]{java.lang.String.class, java.util.Set.class, java.util.Set.class});"
+					+ "java.lang.Object o = constr.newInstance(new java.lang.Object[]{\""+ctBehavior.getLongName()+"\", secrecySet, integritySet});"
+					+ "s.add(o);";
+			
+			before += "}catch(Exception e) {e.printStackTrace();}";
 		ctBehavior.insertBefore(before);
 		
 		String after = 
