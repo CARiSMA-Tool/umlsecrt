@@ -13,13 +13,21 @@ The following dependenies have to be installed in Eclipse:
 CARiSMA: 
 
 Updatesite:	https://carisma.umlsec.de/beta-updatesite
-Features: 	CARiSMA Main Features -> CARiSMA Checks for UML2
+
+Features: 	
+
+	CARiSMA Main Features -> CARiSMA Checks for UML2
 
 GRaViTY:
 
 Updatesite:	https://gravity-tool.github.io/updatesite
-Features:	Parsing -> Modisco Feature
-		Security -> GRaViTY Security
-		UML -> GRaViTY UML
+
+Features:	
+
+	Parsing -> Modisco Feature
+
+	Security -> GRaViTY Security
+		
+	UML -> GRaViTY UML
 
 
