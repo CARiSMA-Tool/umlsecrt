@@ -16,4 +16,5 @@ Require-Bundle: org.eclipse.jdt.core,
  org.eclipse.modisco.infra.discovery.core,
  org.moflon.tgg.language,
  org.eclipse.e4.core.commands,
- org.eclipse.core.expressions
+ org.eclipse.core.expressions,
+ org.gravity.eclipse

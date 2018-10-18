@@ -54,7 +54,7 @@ public class ModelSync {
 		this.classifiers = new Hashtable<String, Classifier>(allUmlClassifiers.size());
 		for (Object o : allUmlClassifiers) {
 			Classifier Classifier = (Classifier) o;
-			String signature = SignatureHelper.getSignature(Classifier);
+			String signature = SignatureHelper.getQualifiedSignature(Classifier);
 			classifiers.put(signature, Classifier);
 		}
 		rtToUmlMapping = new Hashtable<RTNamedElement, NamedElement>();

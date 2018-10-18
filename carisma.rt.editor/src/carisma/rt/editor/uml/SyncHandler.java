@@ -1,8 +1,9 @@
 package carisma.rt.editor.uml;
 
-import java.io.IOException;
 import java.util.List;
 
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
@@ -14,15 +15,17 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.core.expressions.IEvaluationContext;
 import org.eclipse.e4.core.commands.ExpressionContext;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.ISelectionService;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.handlers.HandlerUtil;
+import org.gravity.eclipse.exceptions.TransformationFailedException;
 import org.gravity.tgg.uml.Transformation;
 
 public class SyncHandler extends AbstractHandler {
+
+	private static final Logger LOGGER = Logger.getLogger(SyncHandler.class);
 
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {
@@ -36,8 +39,8 @@ public class SyncHandler extends AbstractHandler {
 					IJavaProject iJjavaProject = (IJavaProject) selected;
 					try {
 						Transformation.umlToProject(iJjavaProject, new NullProgressMonitor());
-					} catch (IOException | CoreException e) {
-						e.printStackTrace();
+					} catch (TransformationFailedException e) {
+						LOGGER.log(Level.ERROR, e.getMessage(), e);
 					}
 				}
 			}
