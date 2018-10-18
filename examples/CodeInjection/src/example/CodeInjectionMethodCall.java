@@ -5,17 +5,15 @@ import java.lang.annotation.Annotation;
 import javax.script.*;
 
 import org.gravity.security.annotations.requirements.Critical;
-import org.gravity.security.annotations.requirements.Integrity;
 import org.gravity.security.annotations.requirements.Secrecy;
 
 @Critical
-public class CodeInjection {
+public class CodeInjectionMethodCall {
 		
-	@Integrity
-	 public static final String injection = "Everything beyond here has been injected via the JavaScript engine:');\n"
+	public static final String injection = "Everything beyond here has been injected via the JavaScript engine:');\n"
 	 		+ "var File = Java.type('java.io.File');\n"
 			+ "var URLClassLoader = Java.type('java.net.URLClassLoader');\n"
-			+ "var loader = new URLClassLoader(new Array(new File('../examples/CodeInjection/bin2').toURI().toURL()));\n"
+			+ "var loader = new URLClassLoader(new Array(new File('../examples/CodeInjection/malware').toURI().toURL()));\n"
 			+ "var clazz = loader.loadClass('example.Evil');\n"
 			+ "clazz.getDeclaredMethod('invokeEvil').invoke(clazz.newInstance());\n"
 			+ "loader.close();\n"
@@ -37,6 +35,6 @@ public class CodeInjection {
 	}
 	
 	public static Annotation[] a(Annotation[] s) {
-		return CodeInjection.class.getAnnotations();
+		return CodeInjectionMethodCall.class.getAnnotations();
 	}
 }

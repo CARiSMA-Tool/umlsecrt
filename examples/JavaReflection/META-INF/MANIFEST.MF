@@ -1,7 +1,8 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: JavaReflection
-Bundle-SymbolicName: JavaReflection
+Bundle-SymbolicName: CWE226-LeaveInformationInField-JavaReflection
 Bundle-Version: 1.0.0.qualifier
 Export-Package: example
 Require-Bundle: org.gravity.security.annotations
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
