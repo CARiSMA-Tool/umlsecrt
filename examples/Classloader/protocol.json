@@ -1,0 +1,22 @@
+{
+  "date": "2018-07-31_13-30",
+  "application": "Classloader",
+  "location": "/home/speldszus/Documents/svn/rgse/umlsecrt/implementation/examples/Classloader/bin",
+  "calls": [
+    {
+      "class":"malware.MalwareFieldRead",
+      "member":"main(java.lang.String[]):void",
+      "bin":"/home/speldszus/Documents/svn/rgse/umlsecrt/implementation/examples/Classloader/bin/"
+    },
+    {
+      "class":"tests.FieldRead",
+      "member":"<init>():void",
+      "bin":"/home/speldszus/Documents/svn/rgse/umlsecrt/implementation/carisma.rt/../examples/Classloader/malware/"
+    },
+    {
+      "class":"secret.Secret",
+      "member":"secret:java.lang.String",
+      "bin":"/home/speldszus/Documents/svn/rgse/umlsecrt/implementation/examples/Classloader/bin/"
+    }
+  ]
+}
