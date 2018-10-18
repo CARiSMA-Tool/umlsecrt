@@ -1,1 +1,0 @@
-Using scaled threading model. 4 processors detected, 4 threads used to drive the workload, in a possible range of [1,256]

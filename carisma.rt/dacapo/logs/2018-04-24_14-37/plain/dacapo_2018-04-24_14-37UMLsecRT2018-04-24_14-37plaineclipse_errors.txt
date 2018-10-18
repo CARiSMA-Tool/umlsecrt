@@ -1,2 +1,0 @@
-===== DaCapo 9.12-MR1 eclipse starting =====
-===== DaCapo 9.12-MR1 eclipse PASSED in 36994 msec =====

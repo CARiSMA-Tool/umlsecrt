@@ -1,2 +1,0 @@
-===== DaCapo 9.12-MR1 xalan starting =====
-===== DaCapo 9.12-MR1 xalan PASSED in 4841 msec =====

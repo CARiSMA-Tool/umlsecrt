@@ -1,2 +1,0 @@
-===== DaCapo 9.12-MR1 lusearch starting =====
-===== DaCapo 9.12-MR1 lusearch PASSED in 2331 msec =====

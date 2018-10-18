@@ -1,3 +1,0 @@
-Successfully created tables
-===== DaCapo 9.12-MR1 tradesoap starting =====
-===== DaCapo 9.12-MR1 tradesoap PASSED in 19848 msec =====

@@ -1,5 +1,0 @@
-About to transcode 3 SVG file(s)
-
-Converting mapWaadt.svg to /home/speldszus/Documents/svn/rgse/umlsecrt/implementation/carisma.rt/./scratch/mapWaadt.png ... ... success
-Converting mapSpain.svg to /home/speldszus/Documents/svn/rgse/umlsecrt/implementation/carisma.rt/./scratch/mapSpain.png ... ... success
-Converting sydney.svg to /home/speldszus/Documents/svn/rgse/umlsecrt/implementation/carisma.rt/./scratch/sydney.png ... 
