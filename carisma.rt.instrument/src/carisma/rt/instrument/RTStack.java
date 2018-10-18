@@ -1,11 +1,23 @@
 package carisma.rt.instrument;
 
 import java.util.Collections;
+import java.util.Hashtable;
 import java.util.Set;
 import java.util.Stack;
 
 public class RTStack {
-
+	
+	private static final Hashtable<Object, Stack<RTAnnotation>> stacks = new Hashtable<>();
+	
+	public static final Stack<RTAnnotation> getStack(Object o) {
+		if(stacks.containsKey(o)) {
+			return stacks.get(o);
+		}
+		Stack<RTAnnotation> s = new Stack<>();
+		stacks.put(o, s);
+		return s;
+	}
+	
 	public static final Stack<RTAnnotation> stack = new Stack<>();
 	
 	public static final class RTAnnotation {

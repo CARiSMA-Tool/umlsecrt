@@ -19,5 +19,6 @@ Require-Bundle: org.eclipse.uml2.uml,
  carisma.profile.umlsec,
  org.eclipse.gmf.runtime.notation,
  org.eclipse.papyrus.infra.core,
- org.eclipse.papyrus.uml.diagram.wizards
+ org.eclipse.papyrus.uml.diagram.wizards,
+ org.eclipse.papyrus.infra.gmfdiag.style
 Bundle-ActivationPolicy: lazy

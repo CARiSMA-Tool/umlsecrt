@@ -73,14 +73,16 @@ public class CompilationParticipant extends org.eclipse.jdt.core.compiler.Compil
 
 					if ("void".equals(earlyReturn.toLowerCase())) {
 						continue;
-					} 
-					else if ("null".equals(earlyReturn.toLowerCase())){
-						if(Signature.SIG_BYTE.equals(typeSignature)||Signature.SIG_SHORT.equals(typeSignature)||Signature.SIG_INT.equals(typeSignature)||Signature.SIG_LONG.equals(typeSignature)||Signature.SIG_FLOAT.equals(typeSignature)||Signature.SIG_DOUBLE.equals(typeSignature)||Signature.SIG_CHAR.equals(typeSignature)||Signature.SIG_BOOLEAN.equals(typeSignature)) {
-							createMarker(type, annotation,
-									"The value  \"null\" cannot be used with primitive types.");
+					} else if ("null".equals(earlyReturn.toLowerCase())) {
+						if (Signature.SIG_BYTE.equals(typeSignature) || Signature.SIG_SHORT.equals(typeSignature)
+								|| Signature.SIG_INT.equals(typeSignature) || Signature.SIG_LONG.equals(typeSignature)
+								|| Signature.SIG_FLOAT.equals(typeSignature)
+								|| Signature.SIG_DOUBLE.equals(typeSignature)
+								|| Signature.SIG_CHAR.equals(typeSignature)
+								|| Signature.SIG_BOOLEAN.equals(typeSignature)) {
+							createMarker(type, annotation, "The value  \"null\" cannot be used with primitive types.");
 						}
-					}
-					else if ("true".equals(earlyReturn.toLowerCase()) || "false".equals(earlyReturn.toLowerCase())) {
+					} else if ("true".equals(earlyReturn.toLowerCase()) || "false".equals(earlyReturn.toLowerCase())) {
 						if (!Signature.SIG_BOOLEAN.equals(typeName)) {
 							createMarker(type, annotation,
 									"The method \"" + earlyReturn + "\" has to return a boolean value.");
@@ -137,51 +139,52 @@ public class CompilationParticipant extends org.eclipse.jdt.core.compiler.Compil
 											boolean correctReturnType = false;
 											typeName = replacePrimitiveWithObject(typeName);
 											String[][] resolvedNeededTypes = type.resolveType(typeName);
-											String[][] resolvedReturnTypes = type
-													.resolveType(replacePrimitiveWithObject(
-															Signature.toString(foundMethod.getReturnType())));
-											for (String[] neededEntry : resolvedNeededTypes) {
-												String neededTypeSignature = neededEntry[0] + '.' + neededEntry[1];
-												for (String[] returnEntry : resolvedReturnTypes) {
-													Stack<String> returnTypes = new Stack<String>();
-													returnTypes.add('Q' + returnEntry[0] + '.' + returnEntry[1] + ';');
-													while (!returnTypes.isEmpty()) {
-														String pop = returnTypes.pop();
-														String returnTypeSignature = Signature.toString(pop)
-																.replaceAll("<.*>", "");
-														if (returnTypeSignature.equals(neededTypeSignature)) {
-															correctReturnType = true;
+											String unresolvedReturnType = Signature.toString(foundMethod.getReturnType());
+											if (!unresolvedReturnType.toLowerCase().contentEquals("void")) {
+												String[][] resolvedReturnTypes = type
+														.resolveType(replacePrimitiveWithObject(
+																unresolvedReturnType));
+												for (String[] neededEntry : resolvedNeededTypes) {
+													String neededTypeSignature = neededEntry[0] + '.' + neededEntry[1];
+													for (String[] returnEntry : resolvedReturnTypes) {
+														Stack<String> returnTypes = new Stack<String>();
+														returnTypes
+																.add('Q' + returnEntry[0] + '.' + returnEntry[1] + ';');
+														while (!returnTypes.isEmpty()) {
+															String pop = returnTypes.pop();
+															String returnTypeSignature = Signature.toString(pop)
+																	.replaceAll("<.*>", "");
+															if (returnTypeSignature.equals(neededTypeSignature)) {
+																correctReturnType = true;
+																break;
+															} else {
+																IType returnType = type.getJavaProject()
+																		.findType(returnTypeSignature);
+																String superclassTypeSignature = returnType
+																		.getSuperclassTypeSignature();
+																if (superclassTypeSignature != null) {
+																	returnTypes.add(superclassTypeSignature);
+																} else {
+																	returnTypes.add("Ljava.lang.Object;");
+																}
+																for (String interfaceSignature : returnType
+																		.getSuperInterfaceTypeSignatures()) {
+																	returnTypes.add(interfaceSignature);
+																}
+															}
+														}
+														if (correctReturnType) {
 															break;
-														} else {
-															IType returnType = type.getJavaProject()
-																	.findType(returnTypeSignature);
-															String superclassTypeSignature = returnType
-																	.getSuperclassTypeSignature();
-															if (superclassTypeSignature != null) {
-																returnTypes.add(superclassTypeSignature);
-															}
-															else {
-																returnTypes.add("Ljava.lang.Object;");
-															}
-															for (String interfaceSignature : returnType
-																	.getSuperInterfaceTypeSignatures()) {
-																returnTypes.add(interfaceSignature);
-															}
 														}
 													}
 													if (correctReturnType) {
 														break;
 													}
 												}
-												if (correctReturnType) {
-													break;
-												}
 											}
 											if (!correctReturnType) {
-												createMarker(type, annotation,
-														"The method \"" + earlyReturn
-																+ "\" has to return an instance of \""
-																+ typeName + "\".");
+												createMarker(type, annotation, "The method \"" + earlyReturn
+														+ "\" has to return an instance of \"" + typeName + "\".");
 											}
 										} else {
 											try {
@@ -237,7 +240,7 @@ public class CompilationParticipant extends org.eclipse.jdt.core.compiler.Compil
 		try {
 			char last = earlyReturn.charAt(earlyReturn.length() - 1);
 			if (last == 'l' || last == 'L') {
-				long value = Long.parseLong(earlyReturn.substring(0, earlyReturn.length()-1));
+				long value = Long.parseLong(earlyReturn.substring(0, earlyReturn.length() - 1));
 				if (!Signature.SIG_LONG.equals(typeSignature)) {
 					createMarker(type, annotation, "The long value \"" + earlyReturn
 							+ "\" is not compatible with the return type \"" + typeName + "\".");

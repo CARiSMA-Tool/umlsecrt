@@ -41,6 +41,7 @@ import carisma.rt.models.protocol.RTType;
 
 public class ModelSync {
 
+	public static final String UNKNOWN_CLASSIFIERS = "UMLsecRT Unknown Classifiers";
 	private Model model, unknown;
 	private Hashtable<String, Classifier> classifiers;
 	private Hashtable<RTNamedElement, NamedElement> rtToUmlMapping;
@@ -107,11 +108,11 @@ public class ModelSync {
 
 			if (sort == MessageSort.SYNCH_CALL_LITERAL) {
 				Message reply = createMessage(null, interaction, MessageSort.REPLY_LITERAL, Collections.emptyList());
-				reply.setSendEvent(createOccurrence(interaction, message, leftLifeline, "-send"));
-				reply.setReceiveEvent(createOccurrence(interaction, message, leftLifeline, "-receive"));
+				reply.setSendEvent(createOccurrence(interaction, reply, rightLifeline, "-send"));
+				reply.setReceiveEvent(createOccurrence(interaction, reply, leftLifeline, "-receive"));
 
-				rightLifeline.getCoveredBys().remove(message.getSendEvent());
-				rightLifeline.getCoveredBys().remove(reply.getReceiveEvent());
+//				leftLifeline.getCoveredBys().remove(message.getSendEvent());
+//				rightLifeline.getCoveredBys().remove(reply.getReceiveEvent());
 
 				BehaviorExecutionSpecification behavior = UMLFactory.eINSTANCE.createBehaviorExecutionSpecification();
 				behavior.setStart((OccurrenceSpecification) message.getReceiveEvent());
@@ -221,7 +222,7 @@ public class ModelSync {
 	private Classifier addClassifier(String siganture) {
 		if (unknown == null) {
 			unknown = UMLFactory.eINSTANCE.createModel();
-			unknown.setName("UMLsecRT Unknown Classifiers");
+			unknown.setName(UNKNOWN_CLASSIFIERS);
 			model.getPackagedElements().add(unknown);
 		}
 		String[] names = siganture.split("\\.");

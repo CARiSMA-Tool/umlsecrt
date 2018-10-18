@@ -24,7 +24,7 @@ public class ModelSyncTest {
 		RTProtocol protocol = new JsonProtocolLoader().loadRTProtocol(new File("protocols/protocol.json"));
 		Model changed = new ModelSync(model).sync(protocol);
 		assertNotNull(changed);
-		changed.eResource().save(new FileOutputStream(new File("protocols/Classloader-canged.uml")), Collections.EMPTY_MAP);
+		changed.eResource().save(new FileOutputStream(new File("protocols/Classloader-changed.uml")), Collections.EMPTY_MAP);
 	}
 
 }
