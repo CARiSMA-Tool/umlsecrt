@@ -12,7 +12,7 @@ The following dependenies have to be installed in Eclipse:
 
 CARiSMA: 
 
-Updatesite:	https://carisma.umlsec.de/beta-updatesite
+Updatesite:	http://carisma.umlsec.de/beta-updatesite
 
 Features: 	
 
