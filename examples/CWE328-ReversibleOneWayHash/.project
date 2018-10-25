@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>CWE486-ComparisonOfClassesByName</name>
+	<name>CWE328-ReversibleOneWayHash</name>
 	<comment></comment>
 	<projects>
 	</projects>
