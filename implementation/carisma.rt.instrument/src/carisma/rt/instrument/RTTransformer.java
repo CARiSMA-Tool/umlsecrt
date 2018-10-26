@@ -4,6 +4,7 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import org.gravity.security.annotations.requirements.Critical;
@@ -17,8 +18,11 @@ import javassist.ClassPool;
 import javassist.CtBehavior;
 import javassist.CtClass;
 import javassist.CtConstructor;
+import javassist.CtField;
 import javassist.CtMethod;
 import javassist.NotFoundException;
+import javassist.expr.ExprEditor;
+import javassist.expr.FieldAccess;
 
 public class RTTransformer implements ClassFileTransformer {
 
@@ -79,6 +83,8 @@ public class RTTransformer implements ClassFileTransformer {
 	private void prepare(Set<String> classSecrecy, Set<String> classIntegrity, CtBehavior ctBehavior,
 			ClassLoader loader) throws ClassNotFoundException, CannotCompileException {
 		System.out.println("[Agent] Transform method: " + ctBehavior.getLongName());
+		CtClass methodDeclaringClass = ctBehavior.getDeclaringClass();
+
 		ArrayList<String> secrecy = new ArrayList<>(classSecrecy);
 		final Secrecy secrecyAnnotation = (Secrecy) ctBehavior.getAnnotation(Secrecy.class);
 		boolean hasSecrecy = secrecyAnnotation != null;
@@ -181,6 +187,61 @@ public class RTTransformer implements ClassFileTransformer {
 				+ "System.out.println(\"[Instrumentation] stack.pop(\\\"\"+s.pop()+\"\\\")\");"
 				+ "}catch(Exception e) {e.printStackTrace();System.exit(-1);}";
 		ctBehavior.insertAfter(after);
+
+		ctBehavior.instrument(new ExprEditor() {
+			@Override
+			public void edit(FieldAccess f) throws CannotCompileException {
+				super.edit(f);
+				try {
+					CtField field = f.getField();
+					if (field.getDeclaringClass().equals(methodDeclaringClass)) {
+						return;
+					}
+					String fieldSignature = field.getDeclaringClass().getName()+"."+field.getName()+":"+field.getType().getSimpleName();
+					Critical fieldClassCritical = (Critical) field.getDeclaringClass().getAnnotation(Critical.class);
+
+					Secrecy fieldSecrecy = (Secrecy) field.getAnnotation(Secrecy.class);
+					Set<String> fieldSecrecySignatures = new HashSet<>();
+					Integrity fieldIntegrity = (Integrity) field.getAnnotation(Integrity.class);
+					Set<String> fieldIntegritySignatures = new HashSet<String>();
+					if (fieldClassCritical != null) {
+						fieldSecrecySignatures.addAll(Arrays.asList(fieldClassCritical.secrecy()));
+						fieldIntegritySignatures.addAll(Arrays.asList(fieldClassCritical.integrity()));
+					}
+					if (fieldSecrecy != null) {
+						fieldSecrecySignatures.add(fieldSignature);
+					}
+					if(fieldIntegrity != null) {
+						fieldIntegritySignatures.add(fieldSignature);
+					}
+					
+					// Check secrecy only for read
+					if (f.isReader() && (fieldSecrecy != null || fieldSecrecySignatures.contains(fieldSignature))) {
+						if (!secrecy.contains(fieldSignature)) {
+							System.out.println("[AGENT] SECURITY VIOLATION SECRECY - Fieldaccessor has no secrecy: " + fieldSignature);
+						} 
+					}
+					
+					// Check integrity only for write
+					if(f.isWriter() && (fieldIntegrity != null || fieldIntegritySignatures.contains(fieldSignature))) {
+						if(!integrity.contains(fieldSignature)) {
+							System.out.println("[AGENT] SECURITY VIOLATION INTEGRITY - Fieldaccessor has no integrity: " + fieldSignature);
+						}
+						
+					}
+					
+					if(secrecy.contains(fieldSignature) && !fieldSecrecySignatures.contains(fieldSignature)) {
+						System.out.println("[AGENT] SECURITY VIOLATION SECRECY - Field has no secrecy: " + fieldSignature);
+					}
+					if(integrity.contains(fieldSignature) && !fieldIntegritySignatures.contains(fieldSignature)) {
+						System.out.println("[AGENT] SECURITY VIOLATION INTEGRITY - Field has no integrity: " + fieldSignature);
+					}
+							
+				} catch (NotFoundException | ClassNotFoundException e) {
+					System.out.println("ERROR: " + e.getLocalizedMessage());
+				}
+			}
+		});
 	}
 
 	private String getEarlyReturn(CtBehavior behavior, String earlyReturn) {
