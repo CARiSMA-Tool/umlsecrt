@@ -43,5 +43,10 @@ public class RTStack {
 		public Set<String> getIntegrity() {
 			return integrity;
 		}
+		
+		@Override
+		public String toString() {
+			return this.method+" secrecy="+secrecy+" integrity="+integrity;
+		}
 	}
 }
