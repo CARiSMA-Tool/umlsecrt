@@ -52,11 +52,8 @@ public class RTTransformer implements ClassFileTransformer {
 			getAnnotations(ctClass);
 			fieldCheck = new RTFieldAccessCheck(ctClass, classIntegrity, classSecrecy);
 
-			for (CtMethod method : ctClass.getDeclaredMethods()) {
-				addSecurityCheck(method, loader);
-			}
-			for (CtConstructor constructor : ctClass.getDeclaredConstructors()) {
-				addSecurityCheck(constructor, loader);
+			for (CtBehavior behavior : ctClass.getDeclaredBehaviors()) {
+				addSecurityCheck(behavior, loader);
 			}
 			return ctClass.toBytecode();
 		} catch (IOException | RuntimeException | CannotCompileException | ClassNotFoundException e) {
@@ -87,28 +84,20 @@ public class RTTransformer implements ClassFileTransformer {
 				classIntegrity.add(i);
 			}
 		}
-		for (CtMethod method : ctClass.getMethods()) {
-			if (method.getAnnotation(Secrecy.class) != null) {
-				classSecrecy.add(method.getLongName());
+		for (CtBehavior behavior : ctClass.getDeclaredBehaviors()) {
+			if (behavior.getAnnotation(Secrecy.class) != null) {
+				classSecrecy.add(behavior.getLongName());
 			}
-			if (method.getAnnotation(Integrity.class) != null) {
-				classIntegrity.add(method.getLongName());
-			}
-		}
-		for (CtConstructor constructor : ctClass.getConstructors()) {
-			if (constructor.getAnnotation(Secrecy.class) != null) {
-				classSecrecy.add(constructor.getLongName());
-			}
-			if (constructor.getAnnotation(Integrity.class) != null) {
-				classIntegrity.add(constructor.getLongName());
+			if (behavior.getAnnotation(Integrity.class) != null) {
+				classIntegrity.add(behavior.getLongName());
 			}
 		}
-		for (CtField method : ctClass.getFields()) {
-			if (method.getAnnotation(Secrecy.class) != null) {
-				classSecrecy.add(RTHelper.getFieldSignature(method));
+		for (CtField field : ctClass.getDeclaredFields()) {
+			if (field.getAnnotation(Secrecy.class) != null) {
+				classSecrecy.add(RTHelper.getFieldSignature(field));
 			}
-			if (method.getAnnotation(Integrity.class) != null) {
-				classIntegrity.add(RTHelper.getFieldSignature(method));
+			if (field.getAnnotation(Integrity.class) != null) {
+				classIntegrity.add(RTHelper.getFieldSignature(field));
 			}
 		}
 	}
@@ -169,6 +158,7 @@ public class RTTransformer implements ClassFileTransformer {
 		before += "java.util.Set secrecySet = new java.util.HashSet();"
 				+ "java.util.Set integritySet = new java.util.HashSet();";
 		for (String s : classSecrecy) {
+			System.out.println("Class secrecy: "+s);
 			before += "secrecySet.add(\"" + s + "\");";
 		}
 		for (String s : classIntegrity) {
@@ -251,11 +241,15 @@ public class RTTransformer implements ClassFileTransformer {
 	 * @throws CannotCompileException
 	 */
 	private void addAfterMethod(CtBehavior ctBehavior) throws CannotCompileException {
-		String after = "try{"
-				+ "java.net.URLClassLoader loader = java.net.URLClassLoader.newInstance(new java.net.URL[]{new java.net.URL(\""
+		String after = "try{";
+				after += "java.net.URLClassLoader loader = java.net.URLClassLoader.newInstance(new java.net.URL[]{new java.net.URL(\""
 				+ url + "\")});"
 				+ "java.util.Stack s = (java.util.Stack) loader.loadClass(\"carisma.rt.instrument.RTStack\").getDeclaredMethod(\"getStack\", new java.lang.Class[]{java.lang.Object.class}).invoke(null, new java.lang.Object[]{java.lang.Thread.currentThread()});"
-				+ "}catch(Exception e) {e.printStackTrace();System.exit(-1);}";
+				+ "Object o = s.pop();";
+				if(DEBUG) {
+					after += "System.out.println(\"[Instrumentation] stack.pop(): \"+o);";
+				}
+				after += "}catch(Exception e) {e.printStackTrace();System.exit(-1);}";
 		ctBehavior.insertAfter(after);
 	}
 }
