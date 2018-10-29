@@ -91,12 +91,12 @@ public class RTHelper {
 				try {
 					return Integer.toString(Integer.parseInt(earlyReturn));
 				} catch (NumberFormatException e) {
-					e.printStackTrace();
+					printAgentError(e);
 				}
 				try {
 					return Double.toString(Double.parseDouble(earlyReturn));
 				} catch (NumberFormatException e) {
-					e.printStackTrace();
+					printAgentError(e);
 				}
 				System.err.println("Didn't found counter measure: " + earlyReturn);
 				return null;
@@ -115,9 +115,21 @@ public class RTHelper {
 		try {
 			signature += ":" + field.getType().getSimpleName();
 		} catch (NotFoundException e) {
-			System.out.println("[AGENT] ERROR: " + e.getLocalizedMessage());
+			printAgentError(e);
 		}
 		return signature;
+	}
+
+	/**
+	 * Prints the exception to the console
+	 * 
+	 * @param e The thrown exception
+	 */
+	public static void printAgentError(Exception e) {
+		System.out.println("[AGENT] ERROR (" + e.getClass().getSimpleName() + "): " + e.getLocalizedMessage());
+		for (StackTraceElement s : e.getStackTrace()) {
+			System.out.println("[AGENT] \t " + s.toString());
+		}
 	}
 
 }

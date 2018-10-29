@@ -14,6 +14,7 @@ import javassist.NotFoundException;
 import javassist.expr.ExprEditor;
 import javassist.expr.FieldAccess;
 import javassist.expr.MethodCall;
+import static carisma.rt.instrument.RTAgent.DEBUG;
 
 final class RTFieldAccessCheck extends ExprEditor {
 
@@ -35,8 +36,11 @@ final class RTFieldAccessCheck extends ExprEditor {
 			if ("java.lang.reflect.Field".equals(methodDeclaringClass.getName())) {
 				final String reflectiveMethodName = reflectiveMethod.getName();
 				if ("get".equals(reflectiveMethodName)) {
-					String code = "String fieldSignature = $1.getClass().getName()+'.'+$0.getName()+':'+$0.getType().getSimpleName();"
-							+ "System.out.println(\"[INSTRUMENTATION] Reflective field access to: \"+fieldSignature);";
+					String code = "String fieldSignature = $1.getClass().getName()+'.'+$0.getName()+':'+$0.getType().getSimpleName();";
+
+					if (DEBUG) {
+						code += "System.out.println(\"[INSTRUMENTATION] Reflective field access to: \"+fieldSignature);";
+					}
 
 					// Check if the field is on the secrecy level
 					code += "boolean hasSecrecy = $0.isAnnotationPresent(org.gravity.security.annotations.requirements.Secrecy.class);"
@@ -64,8 +68,10 @@ final class RTFieldAccessCheck extends ExprEditor {
 							+ "$_ = $0.get($1);";
 					methodCall.replace(code);
 				} else if ("set".equals(reflectiveMethodName)) {
-					String code = "String fieldSignature = $1.getClass().getName()+'.'+$0.getName()+':'+$0.getType().getSimpleName();"
-							+ "System.out.println(\"[INSTRUMENTATION] Reflective field access to: \"+fieldSignature);";
+					String code = "String fieldSignature = $1.getClass().getName()+'.'+$0.getName()+':'+$0.getType().getSimpleName();";
+					if (DEBUG) {
+						code += "System.out.println(\"[INSTRUMENTATION] Reflective field access to: \"+fieldSignature);";
+					}
 
 					// check if field has integrity level
 					code += "boolean hasIntegrity = $0.isAnnotationPresent(org.gravity.security.annotations.requirements.Integrity.class);"
@@ -93,7 +99,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 				}
 			}
 		} catch (NotFoundException e) {
-			System.out.println("[Agent] ERROR: " + e.getLocalizedMessage());
+			RTHelper.printAgentError(e);
 		}
 	}
 
@@ -142,7 +148,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 			}
 
 		} catch (NotFoundException | ClassNotFoundException e) {
-			System.out.println("[Agent] ERROR: " + e.getLocalizedMessage());
+			RTHelper.printAgentError(e);
 		}
 	}
 
@@ -170,7 +176,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 			}
 			return true;
 		} catch (CannotCompileException | NotFoundException e) {
-			System.out.println("[AGENT] ERROR: " + e.getLocalizedMessage());
+			RTHelper.printAgentError(e);
 			return false;
 		}
 	}
@@ -204,7 +210,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 			}
 			return true;
 		} catch (CannotCompileException | NotFoundException e) {
-			System.out.println("[AGENT] ERROR: " + e.getLocalizedMessage());
+			RTHelper.printAgentError(e);
 			return false;
 		}
 	}

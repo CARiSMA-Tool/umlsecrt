@@ -20,6 +20,8 @@ import javassist.CtField;
 import javassist.CtMethod;
 import javassist.NotFoundException;
 
+import static carisma.rt.instrument.RTAgent.DEBUG;
+
 public class RTTransformer implements ClassFileTransformer {
 
 	private String url;
@@ -58,10 +60,7 @@ public class RTTransformer implements ClassFileTransformer {
 			}
 			return ctClass.toBytecode();
 		} catch (IOException | RuntimeException | CannotCompileException | ClassNotFoundException e) {
-			System.out.println("[AGENT] ERROR (" + e.getClass().getSimpleName() + "): " + e.getLocalizedMessage());
-			for (StackTraceElement s : e.getStackTrace()) {
-				System.out.println("[AGENT] ERROR: " + s.toString());
-			}
+			RTHelper.printAgentError(e);
 			throw new IllegalClassFormatException(e.getMessage());
 		}
 
@@ -116,7 +115,9 @@ public class RTTransformer implements ClassFileTransformer {
 
 	private void addSecurityCheck(CtBehavior ctBehavior, ClassLoader loader)
 			throws ClassNotFoundException, CannotCompileException {
-		System.out.println("[Agent] Transform method: " + ctBehavior.getLongName());
+		if(DEBUG) {
+			System.out.println("[Agent] Transform method: " + ctBehavior.getLongName());
+		}
 		addBeforeMethod(ctBehavior);
 		addAfterMethod(ctBehavior);
 		ctBehavior.instrument(fieldCheck);
@@ -139,10 +140,10 @@ public class RTTransformer implements ClassFileTransformer {
 			try {
 				returnType = ((CtMethod) ctBehavior).getReturnType();
 			} catch (NotFoundException e) {
-				System.out.println("AGENT] ERROR: " + e.getLocalizedMessage());
+				RTHelper.printAgentError(e);
 			}
 		} else {
-			System.out.println("[AGETNT] ERROR: unknown behavior: " + ctBehavior);
+			System.out.println("[AGENT] ERROR: unknown behavior: " + ctBehavior);
 		}
 
 		final Secrecy secrecyAnnotation = (Secrecy) ctBehavior.getAnnotation(Secrecy.class);
@@ -159,7 +160,10 @@ public class RTTransformer implements ClassFileTransformer {
 					integrityAnnotation.earlyReturn());
 		}
 
-		String before = "System.out.println(\"[Instrumentation]\\n[Instrumentation] Method call:\");";
+		String before = "";
+		if (DEBUG) {
+			before += "System.out.println(\"[Instrumentation]\\n[Instrumentation] Method call:\");";
+		}
 
 		// Collect secrecy and integrity information about called method
 		before += "java.util.Set secrecySet = new java.util.HashSet();"
@@ -172,8 +176,10 @@ public class RTTransformer implements ClassFileTransformer {
 		}
 
 		// Print called method
-		before += "System.out.println(\"[Instrumentation] this method: " + ctBehavior.getLongName()
-				+ " secrecy=\"+secrecySet+\" integrity=\"+integritySet);";
+		if (DEBUG) {
+			before += "System.out.println(\"[Instrumentation] this method: " + ctBehavior.getLongName()
+					+ " secrecy=\"+secrecySet+\" integrity=\"+integritySet);";
+		}
 
 		// Get stack
 		before += "try{";
@@ -202,8 +208,10 @@ public class RTTransformer implements ClassFileTransformer {
 		before += "java.util.Set integrity = (java.util.Set) annot.getClass().getDeclaredMethod(\"getIntegrity\", new java.lang.Class[0]).invoke(annot, new java.lang.Object[0]);";
 
 		// Print caller
-		before += "System.out.println(\"[Instrumentation] prev method: \"+ caller+\" secrecy=\"+secrecy+\" integrity=\"+integrity);";
-
+		if (DEBUG) {
+			before += "System.out.println(\"[Instrumentation] prev method: \"+ caller+\" secrecy=\"+secrecy+\" integrity=\"+integrity);";
+		}
+		
 		if (classIntegrity.contains(ctBehavior.getLongName())) {
 			before += "if(!integrity.contains(\"" + ctBehavior.getLongName() + "\")){";
 			before += "System.err.println(\"[SECURITY VIOLATION INTEGRITY] - Kind 1\");";
