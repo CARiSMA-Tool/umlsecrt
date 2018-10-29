@@ -85,13 +85,26 @@ public class RTTransformer implements ClassFileTransformer {
 		System.out.println("[Agent] Transform method: " + ctBehavior.getLongName());
 		CtClass methodDeclaringClass = ctBehavior.getDeclaringClass();
 
+		CtClass returnType = null;
+		if (ctBehavior instanceof CtConstructor) {
+			returnType = methodDeclaringClass;
+		} else if (ctBehavior instanceof CtMethod) {
+			try {
+				returnType = ((CtMethod) ctBehavior).getReturnType();
+			} catch (NotFoundException e) {
+				System.out.println("AGENT] ERROR: " + e.getLocalizedMessage());
+			}
+		} else {
+			System.out.println("[AGETNT] ERROR: unknown behavior: " + ctBehavior);
+		}
+
 		ArrayList<String> secrecy = new ArrayList<>(classSecrecy);
 		final Secrecy secrecyAnnotation = (Secrecy) ctBehavior.getAnnotation(Secrecy.class);
 		boolean hasSecrecy = secrecyAnnotation != null;
 		String earlyReturnSecrecy = null;
 		if (hasSecrecy) {
 			secrecy.add(ctBehavior.getLongName());
-			earlyReturnSecrecy = getEarlyReturn(ctBehavior, secrecyAnnotation.earlyReturn());
+			earlyReturnSecrecy = getEarlyReturn(methodDeclaringClass, returnType, secrecyAnnotation.earlyReturn());
 		}
 
 		ArrayList<String> integrity = new ArrayList<>(classIntegrity);
@@ -100,7 +113,7 @@ public class RTTransformer implements ClassFileTransformer {
 		String earlyReturnIntegrity = null;
 		if (hasIntegrity) {
 			integrity.add(ctBehavior.getLongName());
-			earlyReturnIntegrity = getEarlyReturn(ctBehavior, integrityAnnotation.earlyReturn());
+			earlyReturnIntegrity = getEarlyReturn(methodDeclaringClass, returnType, integrityAnnotation.earlyReturn());
 		}
 
 		String before = "System.out.println(\"[Instrumentation]\\n[Instrumentation] Method call:\");";
@@ -135,8 +148,7 @@ public class RTTransformer implements ClassFileTransformer {
 		before += "java.lang.Class cRTAnnotation = loader.loadClass(\"carisma.rt.instrument.RTStack$RTAnnotation\");"
 				+ "java.lang.reflect.Constructor constr = cRTAnnotation.getDeclaredConstructor(new java.lang.Class[]{java.lang.String.class, java.util.Set.class, java.util.Set.class});"
 				+ "java.lang.Object o = constr.newInstance(new java.lang.Object[]{\"" + ctBehavior.getLongName()
-				+ "\", secrecySet, integritySet});" + "s.add(o);"
-				+ "System.out.println(\"[Instrumentation] stack.add(\\\"" + ctBehavior.getLongName() + "\\\")\");";
+				+ "\", secrecySet, integritySet});" + "s.add(o);";
 
 		// Only perform the security check if there was an element on the stack
 		before += "if(annot != null){";
@@ -184,7 +196,6 @@ public class RTTransformer implements ClassFileTransformer {
 				+ "java.net.URLClassLoader loader = java.net.URLClassLoader.newInstance(new java.net.URL[]{new java.net.URL(\""
 				+ url + "\")});"
 				+ "java.util.Stack s = (java.util.Stack) loader.loadClass(\"carisma.rt.instrument.RTStack\").getDeclaredMethod(\"getStack\", new java.lang.Class[]{java.lang.Object.class}).invoke(null, new java.lang.Object[]{java.lang.Thread.currentThread()});"
-				+ "System.out.println(\"[Instrumentation] stack.pop(\\\"\"+s.pop()+\"\\\")\");"
 				+ "}catch(Exception e) {e.printStackTrace();System.exit(-1);}";
 		ctBehavior.insertAfter(after);
 
@@ -197,7 +208,8 @@ public class RTTransformer implements ClassFileTransformer {
 					if (field.getDeclaringClass().equals(methodDeclaringClass)) {
 						return;
 					}
-					String fieldSignature = field.getDeclaringClass().getName()+"."+field.getName()+":"+field.getType().getSimpleName();
+					String fieldSignature = field.getDeclaringClass().getName() + "." + field.getName() + ":"
+							+ field.getType().getSimpleName();
 					Critical fieldClassCritical = (Critical) field.getDeclaringClass().getAnnotation(Critical.class);
 
 					Secrecy fieldSecrecy = (Secrecy) field.getAnnotation(Secrecy.class);
@@ -211,32 +223,76 @@ public class RTTransformer implements ClassFileTransformer {
 					if (fieldSecrecy != null) {
 						fieldSecrecySignatures.add(fieldSignature);
 					}
-					if(fieldIntegrity != null) {
+					if (fieldIntegrity != null) {
 						fieldIntegritySignatures.add(fieldSignature);
 					}
-					
+
 					// Check secrecy only for read
 					if (f.isReader() && (fieldSecrecy != null || fieldSecrecySignatures.contains(fieldSignature))) {
 						if (!secrecy.contains(fieldSignature)) {
-							System.out.println("[AGENT] SECURITY VIOLATION SECRECY - Fieldaccessor has no secrecy: " + fieldSignature);
-						} 
-					}
-					
-					// Check integrity only for write
-					if(f.isWriter() && (fieldIntegrity != null || fieldIntegritySignatures.contains(fieldSignature))) {
-						if(!integrity.contains(fieldSignature)) {
-							System.out.println("[AGENT] SECURITY VIOLATION INTEGRITY - Fieldaccessor has no integrity: " + fieldSignature);
+							System.out.println("[AGENT] SECURITY VIOLATION SECRECY - Fieldaccessor has no secrecy: "
+									+ fieldSignature);
+							try {
+								String earlyReturn = getEarlyReturn(field.getDeclaringClass(), field.getType(),
+										fieldSecrecy.earlyReturn());
+								if (earlyReturn != null) {
+									StringBuilder replacement = new StringBuilder("$_=");
+									if (earlyReturn.endsWith("()")) {
+										replacement.append("$0.");
+									}
+									replacement.append(earlyReturn);
+									replacement.append(';');
+									f.replace(replacement.toString());
+								} else {
+									System.out.println("[AGENT] No counter measure specified");
+								}
+							} catch (CannotCompileException e) {
+								System.out.println(e.getLocalizedMessage());
+							}
 						}
-						
 					}
-					
-					if(secrecy.contains(fieldSignature) && !fieldSecrecySignatures.contains(fieldSignature)) {
-						System.out.println("[AGENT] SECURITY VIOLATION SECRECY - Field has no secrecy: " + fieldSignature);
+
+					// Check integrity only for write
+					if (f.isWriter() && (fieldIntegrity != null || fieldIntegritySignatures.contains(fieldSignature))) {
+						if (!integrity.contains(fieldSignature)) {
+							System.out.println("[AGENT] SECURITY VIOLATION INTEGRITY - Fieldaccessor has no integrity: "
+									+ fieldSignature);
+							try {
+								String earlyReturn = getEarlyReturn(field.getDeclaringClass(), field.getType(),
+										fieldIntegrity.earlyReturn());
+								System.out.println("[AGENT] The earlyReturn is: " + earlyReturn);
+								if (earlyReturn != null) {
+									StringBuilder replacement = new StringBuilder("$0.");
+									replacement.append(field.getName());
+									replacement.append('=');
+									if (earlyReturn.endsWith("()")) {
+										replacement.append("$0.");
+									}
+									replacement.append(earlyReturn);
+									replacement.append(';');
+									System.out.println("[AGENT] The replacement is: "+replacement.toString());
+									f.replace(replacement.toString());
+								} else {
+									System.out.println("[AGENT] No counter measure specified, forbidding field write");
+									// For illegal field writes we aren't changing the field in this case
+									f.replace("$1=$0." + field.getName() + ";");
+								}
+
+							} catch (CannotCompileException e) {
+								System.out.println(e.getLocalizedMessage());
+							}
+						}
 					}
-					if(integrity.contains(fieldSignature) && !fieldIntegritySignatures.contains(fieldSignature)) {
-						System.out.println("[AGENT] SECURITY VIOLATION INTEGRITY - Field has no integrity: " + fieldSignature);
+
+					if (secrecy.contains(fieldSignature) && !fieldSecrecySignatures.contains(fieldSignature)) {
+						System.out.println(
+								"[AGENT] SECURITY VIOLATION SECRECY - Field has no secrecy: " + fieldSignature);
 					}
-							
+					if (integrity.contains(fieldSignature) && !fieldIntegritySignatures.contains(fieldSignature)) {
+						System.out.println(
+								"[AGENT] SECURITY VIOLATION INTEGRITY - Field has no integrity: " + fieldSignature);
+					}
+
 				} catch (NotFoundException | ClassNotFoundException e) {
 					System.out.println("ERROR: " + e.getLocalizedMessage());
 				}
@@ -244,8 +300,7 @@ public class RTTransformer implements ClassFileTransformer {
 		});
 	}
 
-	private String getEarlyReturn(CtBehavior behavior, String earlyReturn) {
-		System.out.println("get early return for: \"" + earlyReturn + "\"");
+	private String getEarlyReturn(CtClass owner, CtClass type, String earlyReturn) {
 		if (earlyReturn == null || earlyReturn.length() == 0) {
 			return null;
 		} else if ("null".equals(earlyReturn.toLowerCase())) {
@@ -262,15 +317,9 @@ public class RTTransformer implements ClassFileTransformer {
 			} else {
 				CtMethod method;
 				try {
-					method = behavior.getDeclaringClass().getDeclaredMethod(earlyReturn);
+					method = owner.getDeclaredMethod(earlyReturn);
 					if (method != null && method.getParameterTypes().length == 0) {
-						CtClass expectedReturn = null;
-						if (behavior instanceof CtMethod) {
-							expectedReturn = ((CtMethod) behavior).getReturnType();
-						} else {
-							expectedReturn = behavior.getDeclaringClass();
-						}
-						if (method.getReturnType().equals(expectedReturn)) {
+						if (method.getReturnType().equals(type)) {
 							return method.getName() + "()";
 						}
 					}
