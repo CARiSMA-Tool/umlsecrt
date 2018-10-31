@@ -2,6 +2,9 @@ package carisma.rt.models.tests;
 
 import static org.junit.Assert.assertNotNull;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import org.junit.Test;
@@ -15,10 +18,14 @@ import carisma.rt.models.protocol.RTProtocol;
 @RunWith(Parameterized.class)
 public class JsonProtocolLoaderTest {
 
+	private static final File OUT = new File("protocols/protocol");
 	private File input;
 	
 	public JsonProtocolLoaderTest(File input) {
 		this.input = input;
+		if(!OUT.exists()) {
+			OUT.mkdirs();
+		}
 	}
 	
 	@Parameters
@@ -34,8 +41,9 @@ public class JsonProtocolLoaderTest {
 	
 	
 	@Test
-	public void testLoadRTProtocol() {
+	public void testLoadRTProtocol() throws IOException {
 		RTProtocol protocol = new JsonProtocolLoader().loadRTProtocol(input);
+		protocol.eResource().save(new FileOutputStream(new File(OUT, input.getName().replaceAll("\\.json", ".xmi"))), Collections.EMPTY_MAP);
 		assertNotNull(protocol);
 	}
 
