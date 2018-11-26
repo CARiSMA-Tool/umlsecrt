@@ -49,7 +49,7 @@ public class RTAgent {
 						}
 						else {
 							if(OUT.isFile()) {
-								throw new IOException("The outout directory is a file.");
+								throw new IOException("The output directory is a file.");
 							}
 						}
 						break;
