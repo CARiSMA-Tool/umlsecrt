@@ -134,11 +134,26 @@ public class RTHelper {
 	/**
 	 * Prints the exception to the console
 	 * 
-	 * @param e The thrown exception
+	 * @param error The thrown exception
 	 */
-	public static void printAgentError(Exception e) {
-		System.out.println("[AGENT] ERROR (" + e.getClass().getSimpleName() + "): " + e.getLocalizedMessage());
-		for (StackTraceElement s : e.getStackTrace()) {
+	public static void printAgentError(Exception error) {
+		final StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+		String location = "";
+		if (stackTrace.length > 1) {
+			location = stackTrace[1].toString();
+		}
+		printAgentError(error, location);
+	}
+
+	/**
+	 * Prints the exception to the console
+	 * 
+	 * @param error The thrown exception
+	 */
+	public static void printAgentError(Exception error, String location) {
+		System.out.println("[AGENT] ERROR (" + error.getClass().getSimpleName() + " at \"" + location + "\"): "
+				+ error.getLocalizedMessage());
+		for (StackTraceElement s : error.getStackTrace()) {
 			System.out.println("[AGENT] \t " + s.toString());
 		}
 	}

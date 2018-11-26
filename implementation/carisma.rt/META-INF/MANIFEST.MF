@@ -8,3 +8,4 @@ Export-Package: carisma.rt
 Require-Bundle: org.gravity.security.annotations,
  org.junit
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Automatic-Module-Name: carisma.rt

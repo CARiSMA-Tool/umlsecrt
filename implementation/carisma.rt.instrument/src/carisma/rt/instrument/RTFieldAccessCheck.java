@@ -34,7 +34,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 	@Override
 	public void edit(MethodCall methodCall) throws CannotCompileException {
 		try {
-			CtMethod reflectiveMethod = methodCall.getMethod();
+			CtMethod reflectiveMethod = methodCall.getMethod(); //TODO: What to do if class is unknown (e.g. DACAPO)
 			CtClass methodDeclaringClass = reflectiveMethod.getDeclaringClass();
 			if ("java.lang.reflect.Field".equals(methodDeclaringClass.getName())) {
 				final String reflectiveMethodName = reflectiveMethod.getName();
