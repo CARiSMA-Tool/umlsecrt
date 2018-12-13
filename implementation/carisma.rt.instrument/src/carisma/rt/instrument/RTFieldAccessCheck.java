@@ -60,17 +60,21 @@ final class RTFieldAccessCheck extends ExprEditor {
 					}
 
 					// Check
-					code += "if(hasSecrecy){" + "if(!callerHasAnnotation){"
-							+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The field \"+fieldSignature+\" requires secrecy but "
-							+ declaringClass.getName() + " doesn't provide secrecy\");\n" 
-							+ getPrintCode("secrecy", "fieldSignature", "$1.getClass()")
-							+ "throw new java.lang.SecurityException(\"UMLsecRT: [secrecy]\");"
+					code += "if(hasSecrecy){" 
+							+ "if(!callerHasAnnotation){"
+								+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The field \"+fieldSignature+\" requires secrecy but "
+								+ declaringClass.getName() + " doesn't provide secrecy\");\n" 
+								+ getPrintCode("secrecy", "fieldSignature", "$1.getClass()")
+								+ "throw new java.lang.SecurityException(\"UMLsecRT: [secrecy]\");"
 							+ "}"
-							+ "} else {" + "if(callerHasAnnotation){"
-							+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The caller "
-							+ declaringClass.getName()
-							+ " requires secrecy but \"+fieldSignature+\" doesn't provide secrecy\");\n"
-							+ getPrintCode("secrecy", "fieldSignature", "$1.getClass()") + "}" + "}"
+						+ "} else {" 
+							+ "if(callerHasAnnotation){"
+								+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The caller "
+								+ declaringClass.getName()
+								+ " requires secrecy but \"+fieldSignature+\" doesn't provide secrecy\");\n"
+								+ getPrintCode("secrecy", "fieldSignature", "$1.getClass()") 
+							+ "}" 
+						+ "}"
 							// Counter measure
 							+ "$_ = $0.get($1);\n"; //TODO: Store result of countermeasure in $_
 					methodCall.replace(code);
@@ -137,26 +141,28 @@ final class RTFieldAccessCheck extends ExprEditor {
 			}
 
 			// Check secrecy only for read
-			if (fieldAccess.isReader() && fieldHasSecrecy) {
-				if (!secrecy.contains(fieldSignature)) {
+			if (fieldAccess.isReader()) {
+				boolean callerHasSecrecyForField = secrecy.contains(fieldSignature);
+				if (fieldHasSecrecy && !callerHasSecrecyForField) {
 					System.out.println(
 							"[AGENT] SECURITY VIOLATION SECRECY - Fieldaccessor has no secrecy: " + fieldSignature);
 					counterMeasureFieldRead(fieldAccess, field);
 				}
-				if (secrecy.contains(fieldSignature) && !fieldHasSecrecy) {
+				if (callerHasSecrecyForField && !fieldHasSecrecy) {
 					System.out.println("[AGENT] SECURITY VIOLATION SECRECY - Field has no secrecy: " + fieldSignature);
 					fieldAccess.replace(getPrintCode("secrecy", '\"'+RTHelper.getSignature(field)+'\"', "$class")+"$_ = $0."+field.getName()+";");
 				}
 			}
 
 			// Check integrity only for write
-			if (fieldAccess.isWriter() && fieldHasIntegrity) {
-				if (!integrity.contains(fieldSignature)) {
+			if (fieldAccess.isWriter()) {
+				boolean callerHasIntegrityForField = integrity.contains(fieldSignature);
+				if (fieldHasIntegrity && !callerHasIntegrityForField) {
 					System.out.println(
 							"[AGENT] SECURITY VIOLATION INTEGRITY - Fieldaccessor has no integrity: " + fieldSignature);
 					counterMeasureFieldWrite(fieldAccess, field);
 				}
-				if (integrity.contains(fieldSignature) && !fieldHasIntegrity) {
+				if (callerHasIntegrityForField && !fieldHasIntegrity) {
 					System.out.println("[AGENT] SECURITY VIOLATION INTEGRITY - Field has no integrity: " + fieldSignature);
 					fieldAccess.replace(getPrintCode("integrity", '\"'+RTHelper.getSignature(field)+'\"', "$class")+"$1=$0." + field.getName() + ";\n");
 				}
