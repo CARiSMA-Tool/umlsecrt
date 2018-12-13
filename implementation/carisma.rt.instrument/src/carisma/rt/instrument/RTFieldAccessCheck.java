@@ -62,13 +62,16 @@ final class RTFieldAccessCheck extends ExprEditor {
 					// Check
 					code += "if(hasSecrecy){" + "if(!callerHasAnnotation){"
 							+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The field \"+fieldSignature+\" requires secrecy but "
-							+ declaringClass.getName() + " doesn't provide secrecy\");\n" + getPrintCode("secrecy", "fieldSignature", "$1.getClass()") + "}"
+							+ declaringClass.getName() + " doesn't provide secrecy\");\n" 
+							+ getPrintCode("secrecy", "fieldSignature", "$1.getClass()")
+							+ "throw new java.lang.SecurityException(\"UMLsecRT: [secrecy]\");"
+							+ "}"
 							+ "} else {" + "if(callerHasAnnotation){"
 							+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The caller "
 							+ declaringClass.getName()
 							+ " requires secrecy but \"+fieldSignature+\" doesn't provide secrecy\");\n"
 							+ getPrintCode("secrecy", "fieldSignature", "$1.getClass()") + "}" + "}"
-
+							// Counter measure
 							+ "$_ = $0.get($1);\n"; //TODO: Store result of countermeasure in $_
 					methodCall.replace(code);
 				} else if ("set".equals(reflectiveMethodName)) {
@@ -94,14 +97,18 @@ final class RTFieldAccessCheck extends ExprEditor {
 					code += "if(hasIntegrity){ " + "if(!callerHasAnnotation){"
 					// If the caller has integrity the field needs integrity
 							+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION INTEGRITY: The field \"+fieldSignature+\" requires integrity but "
-							+ declaringClass.getName() + " doesn't provide integrity\");\n" + getPrintCode("integrity", "fieldSignature", "$1.getClass()") + "}"
+							+ declaringClass.getName() + " doesn't provide integrity\");\n" + getPrintCode("integrity", "fieldSignature", "$1.getClass()") 
+							+ "throw new java.lang.SecurityException(\"UMLsecRT: [integrity]\");"
+							+ "}"
 							+ "} else {" + "if(callerHasAnnotation){"
 							// If the caller doesn't has integrity but the field has integrity we have a
 							// violation
 							+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION INTEGRITY: caller "
 							+ declaringClass.getName()
 							+ " requires integrity but \"+fieldSignature+\" doesn't provide integrity\");\n"
-							+ getPrintCode("integrity", "fieldSignature", "$1.getClass()") + "}" + "}" + "$0.set($1, $2);\n"; //TODO: Counter measure to get value of $2
+							+ getPrintCode("integrity", "fieldSignature", "$1.getClass()") + "}" + "}" 
+							//Perform counter measure
+							+ "$0.set($1, $2);\n"; //TODO: Counter measure to get value of $2
 					methodCall.replace(code);
 				}
 			}

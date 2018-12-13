@@ -134,18 +134,18 @@ public class RTTransformer implements ClassFileTransformer {
 			System.out.println("[AGENT] ERROR: unknown behavior: " + ctBehavior);
 		}
 
-		final Secrecy secrecyAnnotation = (Secrecy) ctBehavior.getAnnotation(Secrecy.class);
-		String earlyReturnSecrecy = null;
-		if (secrecyAnnotation != null) {
-			earlyReturnSecrecy = RTHelper.getEarlyReturn(methodDeclaringClass, returnType,
-					secrecyAnnotation.earlyReturn());
-		}
-
 		final Integrity integrityAnnotation = (Integrity) ctBehavior.getAnnotation(Integrity.class);
 		String earlyReturnIntegrity = null;
 		if (integrityAnnotation != null) {
 			earlyReturnIntegrity = RTHelper.getEarlyReturn(methodDeclaringClass, returnType,
 					integrityAnnotation.earlyReturn());
+		}
+
+		final Secrecy secrecyAnnotation = (Secrecy) ctBehavior.getAnnotation(Secrecy.class);
+		String earlyReturnSecrecy = null;
+		if (secrecyAnnotation != null) {
+			earlyReturnSecrecy = RTHelper.getEarlyReturn(methodDeclaringClass, returnType,
+					secrecyAnnotation.earlyReturn());
 		}
 
 		String before = "";
@@ -203,20 +203,6 @@ public class RTTransformer implements ClassFileTransformer {
 
 		before += "java.util.Set violations = new java.util.HashSet();";
 
-		// if the instrumented method has integrity add code for checking the caller for
-		// integrity
-		if (classIntegrity.contains(ctBehavior.getLongName())) {
-			before += "if(!integrity.contains(\"" + ctBehavior.getLongName() + "\")){";
-			before += "System.err.println(\"[SECURITY VIOLATION INTEGRITY] - The member " + ctBehavior.getLongName()
-					+ " requires integrity but the accessor \"+caller+\" doesn't provides integrity.\");";
-			before += "violations.add(\"integrity\");";
-			if (earlyReturnIntegrity != null) {
-				before += "System.err.println(\"[SECURITY VIOLATION INTEGRITY] - early return\");" 
-			// Add call of early return
-						+ "return " + earlyReturnIntegrity + ";"; //TODO: move behind print;
-			}
-			before += "}";
-		}
 
 		// if the instrumented method has secrecy add code for checking the caller for
 		// secrecy
@@ -229,6 +215,21 @@ public class RTTransformer implements ClassFileTransformer {
 				before += "System.err.println(\"[SECURITY VIOLATION SECRECY] - early return\");" 
 						// Add call early return;
 					+ "return "	+ earlyReturnSecrecy + ";"; // TODO: move behind print
+			}
+			before += "}";
+		}
+		
+		// if the instrumented method has integrity add code for checking the caller for
+		// integrity
+		if (classIntegrity.contains(ctBehavior.getLongName())) {
+			before += "if(!integrity.contains(\"" + ctBehavior.getLongName() + "\")){";
+			before += "System.err.println(\"[SECURITY VIOLATION INTEGRITY] - The member " + ctBehavior.getLongName()
+					+ " requires integrity but the accessor \"+caller+\" doesn't provides integrity.\");";
+			before += "violations.add(\"integrity\");";
+			if (earlyReturnIntegrity != null) {
+				before += "System.err.println(\"[SECURITY VIOLATION INTEGRITY] - early return\");" 
+			// Add call of early return
+						+ "return " + earlyReturnIntegrity + ";"; //TODO: move behind print;
 			}
 			before += "}";
 		}
@@ -250,11 +251,18 @@ public class RTTransformer implements ClassFileTransformer {
 		// If there were violations in the previous checks start printing
 		before += "if(!violations.isEmpty()){"
 				+ "s.getClass().getDeclaredMethod(\"print\", new java.lang.Class[]{java.util.Set.class}).invoke(s, new Object[]{violations});"
+				+ "throw new java.lang.SecurityException(\"UMLsecRT: \"+violations.toString());"
 				+ "}";
 
 		before += "}";
 
-		before += "}catch(Exception e) {System.out.println(\"[Instrumentation] ERROR (\"+e.getClass().getSimpleName()+\"): \"+e.getLocalizedMessage());System.exit(-1);}";
+		before += "}catch(SecurityException e) {"
+				+ "throw e;"
+				+ "}"
+				+ "catch(Exception e) {"
+				+ "System.out.println(\"[Instrumentation] ERROR (\"+e.getClass().getSimpleName()+\"): \"+e.getLocalizedMessage());"
+				+ "System.exit(-1);"
+				+ "}";
 
 		ctBehavior.insertBefore(before);
 	}
