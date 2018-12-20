@@ -22,19 +22,17 @@ final class RTFieldAccessCheck extends ExprEditor {
 	private final CtClass declaringClass;
 	private final Collection<String> integrity;
 	private final Collection<String> secrecy;
-	private final String url;
 
-	RTFieldAccessCheck(CtClass declaringClass, Collection<String> integrity, Collection<String> secrecy, String url) {
+	RTFieldAccessCheck(CtClass declaringClass, Collection<String> integrity, Collection<String> secrecy) {
 		this.declaringClass = declaringClass;
 		this.integrity = integrity;
 		this.secrecy = secrecy;
-		this.url = url;
 	}
 
 	@Override
 	public void edit(MethodCall methodCall) throws CannotCompileException {
 		try {
-			CtMethod reflectiveMethod = methodCall.getMethod(); //TODO: What to do if class is unknown (e.g. DACAPO)
+			CtMethod reflectiveMethod = methodCall.getMethod();
 			CtClass methodDeclaringClass = reflectiveMethod.getDeclaringClass();
 			if ("java.lang.reflect.Field".equals(methodDeclaringClass.getName())) {
 				final String reflectiveMethodName = reflectiveMethod.getName();
@@ -240,15 +238,11 @@ final class RTFieldAccessCheck extends ExprEditor {
 	}
 
 	private String getPrintCode(String violation, String fieldSignature, String clazz) {
-		String print = "java.net.URL url = new java.net.URL(\"" + url + "\");\n"
-				+ "java.net.URLClassLoader loader = java.net.URLClassLoader.newInstance(new java.net.URL[]{url});\n"
-				+ "java.util.Stack s = (java.util.Stack) loader.loadClass(\"carisma.rt.instrument.RTStack\").getDeclaredMethod(\"getStack\", new java.lang.Class[]{java.lang.Thread.class}).invoke(null, new java.lang.Object[]{java.lang.Thread.currentThread()});\n"
-				+ "java.lang.Class cRTAnnotation = loader.loadClass(\"carisma.rt.instrument.RTStack$RTAnnotation\");\n"
-				+ "java.lang.reflect.Constructor constr = cRTAnnotation.getDeclaredConstructor(new java.lang.Class[]{java.lang.String.class, java.lang.Class.class, java.util.Set.class, java.util.Set.class});\n"
-				+ "java.lang.Object annotation = constr.newInstance(new java.lang.Object[]{"+fieldSignature+", "+clazz+" ,java.util.Collections.emptySet(), java.util.Collections.emptySet()});\n"
+		String print = "carisma.rt.instrument.RTStack$PrintableStack s = carisma.rt.instrument.RTStack.getStack(java.lang.Thread.currentThread());"
+				+ "carisma.rt.instrument.RTStack$RTAnnotation annotation = new carisma.rt.instrument.RTStack$RTAnnotation("+fieldSignature+", "+clazz+" ,java.util.Collections.emptySet(), java.util.Collections.emptySet());\n"
 				+ "s.push(annotation);\n"
-				+ "s.getClass().getDeclaredMethod(\"print\", new java.lang.Class[]{java.util.Set.class}).invoke(s, new Object[]{java.util.Collections.singleton(\""+violation+"\")});\n"
-				+ "s.pop();\n";
+				+ "s.print(java.util.Collections.singleton(\""+violation+"\"));"
+				+ "s.pop();";
 		return print;
 	}
 }

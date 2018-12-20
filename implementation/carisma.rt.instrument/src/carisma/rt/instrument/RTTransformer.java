@@ -11,29 +11,28 @@ import org.gravity.security.annotations.requirements.Secrecy;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+
+import javassist.ByteArrayClassPath;
 import javassist.CannotCompileException;
+import javassist.ClassPath;
 import javassist.ClassPool;
 import javassist.CtBehavior;
 import javassist.CtClass;
 import javassist.CtConstructor;
 import javassist.CtField;
 import javassist.CtMethod;
+import javassist.LoaderClassPath;
+import javassist.Modifier;
 import javassist.NotFoundException;
 
 import static carisma.rt.instrument.RTAgent.DEBUG;
 
+@SuppressWarnings("unused")
 public class RTTransformer implements ClassFileTransformer {
 
-	private String url;
 	private RTFieldAccessCheck fieldCheck;
 	private Set<String> classSecrecy;
 	private Set<String> classIntegrity;
-	private ClassPool cPool;
-
-	public RTTransformer() {
-		cPool = ClassPool.getDefault();
-		url = "jar:file:" + getClass().getProtectionDomain().getCodeSource().getLocation().getFile() + "!/";
-	}
 
 	@Override
 	public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined,
@@ -45,22 +44,66 @@ public class RTTransformer implements ClassFileTransformer {
 			return classfileBuffer;
 		}
 
-//		System.out.println("[Agent] Transform class: " + className+ "domain: "+protectionDomain);
-		try {
-			CtClass ctClass = cPool.makeClass(new ByteArrayInputStream(classfileBuffer));
-
-			getAnnotations(ctClass);
-			fieldCheck = new RTFieldAccessCheck(ctClass, classIntegrity, classSecrecy, url);
-
-			for (CtBehavior behavior : ctClass.getDeclaredBehaviors()) {
-				addSecurityCheck(behavior);
-			}
-			return ctClass.toBytecode();
-		} catch (IOException | RuntimeException | CannotCompileException | ClassNotFoundException e) {
-			RTHelper.printAgentError(e);
-			throw new IllegalClassFormatException(e.getMessage());
+		if (RTAgent.DEBUG) {
+			System.out.println(
+					"[Agent] Transform class: " + className + " class: " + classBeingRedefined + " loader: " + loader);
 		}
 
+		byte[] bytecode;
+		String classNameDotted = className.replaceAll("/", ".");
+
+		ClassPool cPool = ClassPool.getDefault();
+		ClassPath byteArrayClassPath = new ByteArrayClassPath(classNameDotted, classfileBuffer);
+		LoaderClassPath loaderClassPath = new LoaderClassPath(loader);
+
+		cPool.appendClassPath(loaderClassPath);
+		cPool.insertClassPath(byteArrayClassPath);
+
+		try {
+			bytecode = transform(classNameDotted, cPool);
+		} catch (IOException | RuntimeException | ClassNotFoundException | NotFoundException
+				| CannotCompileException e) {
+			RTHelper.printAgentError(e);
+			bytecode = classfileBuffer;
+		}
+
+		cPool.removeClassPath(loaderClassPath);
+		cPool.removeClassPath(byteArrayClassPath);
+
+		return bytecode;
+	}
+
+	/**
+	 * @param bytecode
+	 * @param classNameDotted
+	 * @param cPool
+	 * @return
+	 * @throws NotFoundException
+	 * @throws ClassNotFoundException
+	 * @throws IOException
+	 * @throws CannotCompileException
+	 */
+	private byte[] transform(String classNameDotted, ClassPool cPool)
+			throws NotFoundException, ClassNotFoundException, IOException, CannotCompileException {
+		CtClass ctClass = cPool.get(classNameDotted);
+
+		getAnnotations(ctClass);
+		fieldCheck = new RTFieldAccessCheck(ctClass, classIntegrity, classSecrecy);
+
+		for (CtBehavior behavior : ctClass.getDeclaredBehaviors()) {
+			int modifiers = behavior.getModifiers();
+			if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
+				continue;
+			}
+			try {
+				if (!addSecurityCheck(behavior, classNameDotted)) {
+					System.out.println("Couldn't instrument: " + behavior);
+				}
+			} catch (NotFoundException e) {
+				RTHelper.printAgentError(e);
+			}
+		}
+		return ctClass.toBytecode();
 	}
 
 	/**
@@ -102,48 +145,68 @@ public class RTTransformer implements ClassFileTransformer {
 		}
 	}
 
-	private void addSecurityCheck(CtBehavior ctBehavior) throws ClassNotFoundException, CannotCompileException {
+	private boolean addSecurityCheck(CtBehavior ctBehavior, String className)
+			throws ClassNotFoundException, NotFoundException {
+		if (ctBehavior instanceof CtConstructor) {
+			if (((CtConstructor) ctBehavior).isClassInitializer()) {
+				return true;
+			}
+		}
+
 		if (DEBUG) {
 			System.out.println("[Agent] Transform method: " + ctBehavior.getLongName());
 		}
-		addBeforeMethod(ctBehavior);
-		addAfterMethod(ctBehavior);
-		ctBehavior.instrument(fieldCheck);
+		if (!addBeforeMethod(ctBehavior, className)) {
+			return false;
+		}
+		if (!addAfterMethod(ctBehavior)) {
+			return false;
+		}
+		try {
+			ctBehavior.instrument(fieldCheck);
+		} catch (CannotCompileException e) {
+			RTHelper.printAgentError(e);
+			return false;
+		}
+		return true;
 	}
 
 	/**
 	 * @param classSecrecy
 	 * @param classIntegrity
 	 * @param ctBehavior
+	 * @param className
+	 * @return
 	 * @throws ClassNotFoundException
+	 * @throws NotFoundException
 	 * @throws CannotCompileException
 	 */
-	private void addBeforeMethod(CtBehavior ctBehavior) throws ClassNotFoundException, CannotCompileException {
+	private boolean addBeforeMethod(CtBehavior ctBehavior, String className)
+			throws ClassNotFoundException, NotFoundException {
 		CtClass methodDeclaringClass = ctBehavior.getDeclaringClass();
+
+		String earlyReturnIntegrity = null;
+		String earlyReturnSecrecy = null;
 
 		CtClass returnType = null;
 		if (ctBehavior instanceof CtConstructor) {
 			returnType = methodDeclaringClass;
 		} else if (ctBehavior instanceof CtMethod) {
-			try {
-				returnType = ((CtMethod) ctBehavior).getReturnType();
-			} catch (NotFoundException e) {
-				RTHelper.printAgentError(e);
-			}
+			returnType = ((CtMethod) ctBehavior).getReturnType();
 		} else {
 			System.out.println("[AGENT] ERROR: unknown behavior: " + ctBehavior);
 		}
 
 		final Integrity integrityAnnotation = (Integrity) ctBehavior.getAnnotation(Integrity.class);
-		String earlyReturnIntegrity = null;
-		if (integrityAnnotation != null) {
+		boolean hasIntegrity = integrityAnnotation != null;
+		if (hasIntegrity) {
 			earlyReturnIntegrity = RTHelper.getEarlyReturn(methodDeclaringClass, returnType,
 					integrityAnnotation.earlyReturn());
 		}
 
 		final Secrecy secrecyAnnotation = (Secrecy) ctBehavior.getAnnotation(Secrecy.class);
-		String earlyReturnSecrecy = null;
-		if (secrecyAnnotation != null) {
+		boolean hasSecrecy = secrecyAnnotation != null;
+		if (hasSecrecy) {
 			earlyReturnSecrecy = RTHelper.getEarlyReturn(methodDeclaringClass, returnType,
 					secrecyAnnotation.earlyReturn());
 		}
@@ -153,136 +216,146 @@ public class RTTransformer implements ClassFileTransformer {
 			before += "System.out.println(\"[Instrumentation]\\n[Instrumentation] Method call:\");";
 		}
 
+		String methodSignature = ctBehavior.getLongName();
+		
 		// Collect secrecy and integrity information about called method
 		before += "java.util.Set secrecySet = new java.util.HashSet();"
 				+ "java.util.Set integritySet = new java.util.HashSet();";
 		for (String s : classSecrecy) {
+			hasSecrecy = hasSecrecy || methodSignature.equals(s);
 			before += "secrecySet.add(\"" + s + "\");";
 		}
 		for (String s : classIntegrity) {
+			hasIntegrity = hasIntegrity || methodSignature.equals(s);
 			before += "integritySet.add(\"" + s + "\");";
 		}
 
 		// Print called method
 		if (DEBUG) {
-			before += "System.out.println(\"[Instrumentation] this method: " + ctBehavior.getLongName()
+			before += "System.out.println(\"[Instrumentation] this method: " + methodSignature
 					+ " secrecy=\"+secrecySet+\" integrity=\"+integritySet);";
 		}
 
 		// Get stack
 		before += "try{";
-		before += "java.net.URLClassLoader loader = java.net.URLClassLoader.newInstance(new java.net.URL[]{new java.net.URL(\""
-				+ url + "\")});"
-				+ "java.util.Stack s = (java.util.Stack) loader.loadClass(\"carisma.rt.instrument.RTStack\").getDeclaredMethod(\"getStack\", new java.lang.Class[]{java.lang.Thread.class}).invoke(null, new java.lang.Object[]{java.lang.Thread.currentThread()});";
+		before += "carisma.rt.instrument.RTStack$PrintableStack s = carisma.rt.instrument.RTStack.getStack(java.lang.Thread.currentThread());";
 
 		// Get Top of stack
-		before += "java.lang.Object annot = null;";
+		before += "carisma.rt.instrument.RTStack$RTAnnotation annot = null;";
 		before += "if(!s.isEmpty()){";
-		before += "annot = s.peek();";
+		before += "annot = (carisma.rt.instrument.RTStack$RTAnnotation) s.peek();";
 		before += "}";
 
 		// Add called method to stack
-		before += "java.lang.Class cRTAnnotation = loader.loadClass(\"carisma.rt.instrument.RTStack$RTAnnotation\");"
-				+ "java.lang.reflect.Constructor constr = cRTAnnotation.getDeclaredConstructor(new java.lang.Class[]{java.lang.String.class, java.lang.Class.class, java.util.Set.class, java.util.Set.class});"
-				+ "java.lang.Object o = constr.newInstance(new java.lang.Object[]{\""
-				+ RTHelper.getSignature(ctBehavior) + "\", " + ctBehavior.getDeclaringClass().getName()
-				+ ".class , secrecySet, integritySet});" + "s.push(o);";
+		before += "carisma.rt.instrument.RTStack$RTAnnotation o = new carisma.rt.instrument.RTStack$RTAnnotation(\""
+				+ RTHelper.getSignature(ctBehavior) + "\" , " + className + ".class, secrecySet, integritySet);"
+				+ "s.push(o);";
 
 		// Only perform the security check if there was an element on the stack
 		before += "if(annot != null){";
 
 		// Get the caller and its security properties
-		before += "java.lang.String caller = (java.lang.String) annot.getClass().getDeclaredMethod(\"getSignature\", new java.lang.Class[0]).invoke(annot, new java.lang.Object[0]);";
-		before += "java.util.Set secrecy = (java.util.Set) annot.getClass().getDeclaredMethod(\"getSecrecy\", new java.lang.Class[0]).invoke(annot, new java.lang.Object[0]);";
-		before += "java.util.Set integrity = (java.util.Set) annot.getClass().getDeclaredMethod(\"getIntegrity\", new java.lang.Class[0]).invoke(annot, new java.lang.Object[0]);";
+		before += "boolean callerSecrecy = annot.hasSecrecy(\""+methodSignature+"\");"
+				+ "boolean callerIntegrity = annot.hasIntegrity(\""+methodSignature+"\");";
 
 		// Print caller
 		if (DEBUG) {
-			before += "System.out.println(\"[Instrumentation] prev method: \"+ caller+\" secrecy=\"+secrecy+\" integrity=\"+integrity);";
+			before += "System.out.println(\"[Instrumentation] prev method: \"+annot.getSignature()+\" secrecy=\"+secrecy+\" integrity=\"+integrity);";
 		}
 
 		before += "java.util.Set violations = new java.util.HashSet();";
 
-
 		// if the instrumented method has secrecy add code for checking the caller for
 		// secrecy
-		if (classSecrecy.contains(ctBehavior.getLongName())) {
-			before += "if(!secrecy.contains(\"" + ctBehavior.getLongName() + "\")){";
-			before += "System.err.println(\"[SECURITY VIOLATION SECRECY] - The member " + ctBehavior.getLongName()
-					+ " requires secrecy but the accessor \"+caller+\" doesn't provide secrecy.\");";
+		if (hasSecrecy) {
+			before += "if(!callerSecrecy){";
+			before += "System.err.println(\"[SECURITY VIOLATION SECRECY] - The member " + methodSignature
+					+ " requires secrecy but the accessor \"+annot.getSignature()+\" doesn't provide secrecy.\");";
 			before += "violations.add(\"secrecy\");";
 			if (earlyReturnSecrecy != null) {
-				before += "System.err.println(\"[SECURITY VIOLATION SECRECY] - early return\");" 
+				before += "System.err.println(\"[SECURITY VIOLATION SECRECY] - early return\");"
 						// Add call early return;
-					+ "return "	+ earlyReturnSecrecy + ";"; // TODO: move behind print
+						+ "return " + earlyReturnSecrecy + ";"; // TODO: move behind print
 			}
 			before += "}";
 		}
-		
+
 		// if the instrumented method has integrity add code for checking the caller for
 		// integrity
-		if (classIntegrity.contains(ctBehavior.getLongName())) {
-			before += "if(!integrity.contains(\"" + ctBehavior.getLongName() + "\")){";
-			before += "System.err.println(\"[SECURITY VIOLATION INTEGRITY] - The member " + ctBehavior.getLongName()
-					+ " requires integrity but the accessor \"+caller+\" doesn't provides integrity.\");";
+		if (hasIntegrity) {
+			before += "if(!annot.hasIntegrity(\"" + methodSignature + "\")){";
+			before += "System.err.println(\"[SECURITY VIOLATION INTEGRITY] - The member " + methodSignature
+					+ " requires integrity but the accessor \"+annot.getSignature()+\" doesn't provides integrity.\");";
 			before += "violations.add(\"integrity\");";
 			if (earlyReturnIntegrity != null) {
-				before += "System.err.println(\"[SECURITY VIOLATION INTEGRITY] - early return\");" 
-			// Add call of early return
-						+ "return " + earlyReturnIntegrity + ";"; //TODO: move behind print;
+				before += "System.err.println(\"[SECURITY VIOLATION INTEGRITY] - early return\");"
+						// Add call of early return
+						+ "return " + earlyReturnIntegrity + ";"; // TODO: move behind print;
 			}
 			before += "}";
 		}
 
 		// Add check if this method provides secrecy in case the caller requires it
-		before += "if(secrecy.contains(caller) && !secrecySet.contains(caller)){"
-				+ "System.err.println(\"[SECURITY VIOLATION SECRECY] - The accessor \"+caller+\" requires secrecy but the member "
-				+ ctBehavior.getLongName() + " doesn't provide secrecy.\");"
+		before += "if(callerSecrecy && "+!hasSecrecy+"){"
+				+ "System.err.println(\"[SECURITY VIOLATION SECRECY] - The accessor \"+annot.getSignature()+\" requires secrecy but the member "
+				+ methodSignature + " doesn't provide secrecy.\");"
 				// Add secrecy to the list of violations
 				+ "violations.add(\"secrecy\");" + "}";
 
 		// Add check if this method provides integrity in case the caller requires it
-		before += "if(integrity.contains(caller) && !integritySet.contains(caller)){"
-				+ "System.err.println(\"[SECURITY VIOLATION INTEGRITY] - The accessor \"+caller+\" requires integrity but the member "
-				+ ctBehavior.getLongName() + " doesn't provide integrity.\");"
+		before += "if(callerIntegrity && "+!hasIntegrity+"){"
+				+ "System.err.println(\"[SECURITY VIOLATION INTEGRITY] - The accessor \"+annot.getSignature()+\" requires integrity but the member "
+				+ methodSignature + " doesn't provide integrity.\");"
 				// Add integrity to the list of violations
 				+ "violations.add(\"integrity\");" + "}";
 
 		// If there were violations in the previous checks start printing
 		before += "if(!violations.isEmpty()){"
-				+ "s.getClass().getDeclaredMethod(\"print\", new java.lang.Class[]{java.util.Set.class}).invoke(s, new Object[]{violations});"
-				+ "throw new java.lang.SecurityException(\"UMLsecRT: \"+violations.toString());"
-				+ "}";
+				+ "s.print(violations);"
+				+ "throw new java.lang.SecurityException(\"UMLsecRT: \"+violations.toString());" + "}";
 
 		before += "}";
 
-		before += "}catch(SecurityException e) {"
-				+ "throw e;"
-				+ "}"
-				+ "catch(Exception e) {"
+		before += "}catch(SecurityException e) {" + "throw e;" + "}" + "catch(Exception e) {"
 				+ "System.out.println(\"[Instrumentation] ERROR (\"+e.getClass().getSimpleName()+\"): \"+e.getLocalizedMessage());"
-				+ "System.exit(-1);"
-				+ "}";
+				+ "System.exit(-1);" + "}"
+//				+ "long duration = System.nanoTime() - start;"
+//				+ "try { "
+//				+ "java.nio.file.Files.write(java.nio.file.Paths.get(\"duration.txt\", new String[0]), (java.lang.Long.toString(duration)+\"\\n\").getBytes(), new java.nio.file.StandardOpenOption[]{java.nio.file.StandardOpenOption.APPEND, java.nio.file.StandardOpenOption.CREATE});" + 
+//				"}catch (java.io.IOException e) {}"
+		;
 
-		ctBehavior.insertBefore(before);
+		try {
+			if (ctBehavior instanceof CtConstructor) {
+				((CtConstructor) ctBehavior).insertBeforeBody(before);
+			} else {
+				ctBehavior.insertBefore(before);
+			}
+		} catch (CannotCompileException e) {
+			System.out.println("----> ctBehavior.insertBefore(before);");
+			System.out.println();
+			System.out.println(before);
+			System.out.println();
+			RTHelper.printAgentError(e);
+			return false;
+		}
+		return true;
 	}
 
 	/**
 	 * Adds the stack.pop() at the end of the method
 	 * 
 	 * @param ctBehavior The member to which the functionality should be added
-	 * @throws CannotCompileException
+	 * @return
 	 */
-	private void addAfterMethod(CtBehavior ctBehavior) throws CannotCompileException {
-		String after = "try{";
-		after += "java.net.URLClassLoader loader = java.net.URLClassLoader.newInstance(new java.net.URL[]{new java.net.URL(\""
-				+ url + "\")});"
-				+ "java.util.Stack s = (java.util.Stack) loader.loadClass(\"carisma.rt.instrument.RTStack\").getDeclaredMethod(\"getStack\", new java.lang.Class[]{java.lang.Thread.class}).invoke(null, new java.lang.Object[]{java.lang.Thread.currentThread()});"
-				+ "Object o = s.pop();";
-		if (DEBUG) {
-			after += "System.out.println(\"[Instrumentation] stack.pop(): \"+o);";
+	private boolean addAfterMethod(CtBehavior ctBehavior) {
+		try {
+			ctBehavior.insertAfter("carisma.rt.instrument.RTStack.getStack(java.lang.Thread.currentThread()).pop();");
+		} catch (CannotCompileException e) {
+			System.out.println("------> ctBehavior.insertAfter(after)");
+			RTHelper.printAgentError(e);
+			return false;
 		}
-		after += "}catch(Exception e) {e.printStackTrace();System.exit(-1);}";
-		ctBehavior.insertAfter(after);
+		return true;
 	}
 }

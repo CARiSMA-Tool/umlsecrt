@@ -18,10 +18,10 @@ import static carisma.rt.instrument.RTAgent.OUT;
 
 public class RTStack {
 
-	private static final HashMap<Thread, Stack<RTAnnotation>> stacks = new HashMap<>();
+	private static final HashMap<Thread, PrintableStack> stacks = new HashMap<>();
 
-	public static final Stack<RTAnnotation> getStack(Thread thread) {
-		Stack<RTAnnotation> stack;
+	public static final PrintableStack getStack(Thread thread) {
+		PrintableStack stack;
 		if (stacks.containsKey(thread)) {
 			stack = stacks.get(thread);
 		} else {
@@ -133,13 +133,13 @@ public class RTStack {
 		public Class<?> getClazz() {
 			return clazz;
 		}
-
-		public Set<String> getSecrecy() {
-			return secrecy;
+		
+		public boolean hasSecrecy(String signature) {
+			return secrecy.contains(signature);
 		}
-
-		public Set<String> getIntegrity() {
-			return integrity;
+		
+		public boolean hasIntegrity(String signature) {
+			return integrity.contains(signature);
 		}
 
 		@Override
