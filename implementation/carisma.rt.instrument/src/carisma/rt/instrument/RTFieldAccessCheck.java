@@ -37,86 +37,102 @@ final class RTFieldAccessCheck extends ExprEditor {
 			if ("java.lang.reflect.Field".equals(methodDeclaringClass.getName())) {
 				final String reflectiveMethodName = reflectiveMethod.getName();
 				if ("get".equals(reflectiveMethodName)) {
-					String code = "String fieldSignature = $1.getClass().getName()+'.'+$0.getName()+':'+$0.getType().getSimpleName();\n";
-
-					if (DEBUG) {
-						code += "System.out.println(\"[INSTRUMENTATION] Reflective field access to: \"+fieldSignature);\n";
-					}
-
-					// Check if the field is on the secrecy level
-					code += "boolean hasSecrecy = $0.isAnnotationPresent(org.gravity.security.annotations.requirements.Secrecy.class);\n"
-							+ "if(!hasSecrecy){"
-							+ "org.gravity.security.annotations.requirements.Critical critical = (org.gravity.security.annotations.requirements.Critical) $1.getClass().getAnnotation(org.gravity.security.annotations.requirements.Critical.class);\n"
-							+ "if(critical!=null){"
-							+ "hasSecrecy = java.util.Arrays.asList(critical.secrecy()).contains(fieldSignature);\n"
-							+ "}" + "}";
-
-					// Check if the caller requires the secrecy level for the field
-					code += "boolean callerHasAnnotation = false;\n";
-					for (String s : secrecy) {
-						code += "callerHasAnnotation |= \"" + s + "\".equals(fieldSignature);\n";
-					}
-
-					// Check
-					code += "if(hasSecrecy){" 
-							+ "if(!callerHasAnnotation){"
-								+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The field \"+fieldSignature+\" requires secrecy but "
-								+ declaringClass.getName() + " doesn't provide secrecy\");\n" 
-								+ getPrintCode("secrecy", "fieldSignature", "$1.getClass()")
-								+ "throw new java.lang.SecurityException(\"UMLsecRT: [secrecy]\");"
-							+ "}"
-						+ "} else {" 
-							+ "if(callerHasAnnotation){"
-								+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The caller "
-								+ declaringClass.getName()
-								+ " requires secrecy but \"+fieldSignature+\" doesn't provide secrecy\");\n"
-								+ getPrintCode("secrecy", "fieldSignature", "$1.getClass()") 
-							+ "}" 
-						+ "}"
-							// Counter measure
-							+ "$_ = $0.get($1);\n"; //TODO: Store result of countermeasure in $_
-					methodCall.replace(code);
+					reflectiveGet(methodCall);
 				} else if ("set".equals(reflectiveMethodName)) {
-					String code = "String fieldSignature = $1.getClass().getName()+'.'+$0.getName()+':'+$0.getType().getSimpleName();\n";
-					if (DEBUG) {
-						code += "System.out.println(\"[INSTRUMENTATION] Reflective field access to: \"+fieldSignature);\n";
-					}
-
-					// check if field has integrity level
-					code += "boolean hasIntegrity = $0.isAnnotationPresent(org.gravity.security.annotations.requirements.Integrity.class);\n"
-							+ "if(!hasIntegrity){"
-							+ "org.gravity.security.annotations.requirements.Critical critical = (org.gravity.security.annotations.requirements.Critical) $1.getClass().getAnnotation(org.gravity.security.annotations.requirements.Critical.class);\n"
-							+ "if(critical!=null){"
-							+ "hasIntegrity = java.util.Arrays.asList(critical.integrity()).contains(fieldSignature);\n"
-							+ "}" + "}";
-
-					// check if caller has integrity for field
-					code += "boolean callerHasAnnotation = false;\n";
-					for (String s : integrity) {
-						code += "callerHasAnnotation |= \"" + s + "\".equals(fieldSignature);\n";
-					}
-
-					code += "if(hasIntegrity){ " + "if(!callerHasAnnotation){"
-					// If the caller has integrity the field needs integrity
-							+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION INTEGRITY: The field \"+fieldSignature+\" requires integrity but "
-							+ declaringClass.getName() + " doesn't provide integrity\");\n" + getPrintCode("integrity", "fieldSignature", "$1.getClass()") 
-							+ "throw new java.lang.SecurityException(\"UMLsecRT: [integrity]\");"
-							+ "}"
-							+ "} else {" + "if(callerHasAnnotation){"
-							// If the caller doesn't has integrity but the field has integrity we have a
-							// violation
-							+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION INTEGRITY: caller "
-							+ declaringClass.getName()
-							+ " requires integrity but \"+fieldSignature+\" doesn't provide integrity\");\n"
-							+ getPrintCode("integrity", "fieldSignature", "$1.getClass()") + "}" + "}" 
-							//Perform counter measure
-							+ "$0.set($1, $2);\n"; //TODO: Counter measure to get value of $2
-					methodCall.replace(code);
+					reflectiveSet(methodCall);
 				}
 			}
 		} catch (NotFoundException e) {
 			RTHelper.printAgentError(e);
 		}
+	}
+
+	/**
+	 * @param methodCall
+	 * @throws CannotCompileException
+	 */
+	private void reflectiveSet(MethodCall methodCall) throws CannotCompileException {
+		String code = "String fieldSignature = $1.getClass().getName()+'.'+$0.getName()+':'+$0.getType().getSimpleName();\n";
+		if (DEBUG) {
+			code += "System.out.println(\"[INSTRUMENTATION] Reflective field access to: \"+fieldSignature);\n";
+		}
+
+		// check if field has integrity level
+		code += "boolean hasIntegrity = $0.isAnnotationPresent(org.gravity.security.annotations.requirements.Integrity.class);\n"
+				+ "if(!hasIntegrity){"
+				+ "org.gravity.security.annotations.requirements.Critical critical = (org.gravity.security.annotations.requirements.Critical) $1.getClass().getAnnotation(org.gravity.security.annotations.requirements.Critical.class);\n"
+				+ "if(critical!=null){"
+				+ "hasIntegrity = java.util.Arrays.asList(critical.integrity()).contains(fieldSignature);\n"
+				+ "}" + "}";
+
+		// check if caller has integrity for field
+		code += "boolean callerHasAnnotation = false;\n";
+		for (String s : integrity) {
+			code += "callerHasAnnotation |= \"" + s + "\".equals(fieldSignature);\n";
+		}
+
+		code += "if(hasIntegrity){ " + "if(!callerHasAnnotation){"
+		// If the caller has integrity the field needs integrity
+				+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION INTEGRITY: The field \"+fieldSignature+\" requires integrity but "
+				+ declaringClass.getName() + " doesn't provide integrity\");\n" + getPrintCode("integrity", "fieldSignature", "$1.getClass()") 
+				+ "throw new java.lang.SecurityException(\"UMLsecRT: [integrity]\");"
+				+ "}"
+				+ "} else {" + "if(callerHasAnnotation){"
+				// If the caller doesn't has integrity but the field has integrity we have a
+				// violation
+				+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION INTEGRITY: caller "
+				+ declaringClass.getName()
+				+ " requires integrity but \"+fieldSignature+\" doesn't provide integrity\");\n"
+				+ getPrintCode("integrity", "fieldSignature", "$1.getClass()") + "}" + "}" 
+				//Perform counter measure
+				+ "$0.set($1, $2);\n"; //TODO: Counter measure to get value of $2
+		methodCall.replace(code);
+	}
+
+	/**
+	 * @param methodCall
+	 * @throws CannotCompileException
+	 */
+	private void reflectiveGet(MethodCall methodCall) throws CannotCompileException {
+		String code = "String fieldSignature = $1.getClass().getName()+'.'+$0.getName()+':'+$0.getType().getSimpleName();\n";
+
+		if (DEBUG) {
+			code += "System.out.println(\"[INSTRUMENTATION] Reflective field access to: \"+fieldSignature);\n";
+		}
+
+		// Check if the field is on the secrecy level
+		code += "boolean hasSecrecy = $0.isAnnotationPresent(org.gravity.security.annotations.requirements.Secrecy.class);\n"
+				+ "if(!hasSecrecy){"
+				+ "org.gravity.security.annotations.requirements.Critical critical = (org.gravity.security.annotations.requirements.Critical) $1.getClass().getAnnotation(org.gravity.security.annotations.requirements.Critical.class);\n"
+				+ "if(critical!=null){"
+				+ "hasSecrecy = java.util.Arrays.asList(critical.secrecy()).contains(fieldSignature);\n"
+				+ "}" + "}";
+
+		// Check if the caller requires the secrecy level for the field
+		code += "boolean callerHasAnnotation = false;\n";
+		for (String s : secrecy) {
+			code += "callerHasAnnotation |= \"" + s + "\".equals(fieldSignature);\n";
+		}
+
+		// Check
+		code += "if(hasSecrecy){" 
+				+ "if(!callerHasAnnotation){"
+					+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The field \"+fieldSignature+\" requires secrecy but "
+					+ declaringClass.getName() + " doesn't provide secrecy\");\n" 
+					+ getPrintCode("secrecy", "fieldSignature", "$1.getClass()")
+					+ "throw new java.lang.SecurityException(\"UMLsecRT: [secrecy]\");"
+				+ "}"
+			+ "} else {" 
+				+ "if(callerHasAnnotation){"
+					+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The caller "
+					+ declaringClass.getName()
+					+ " requires secrecy but \"+fieldSignature+\" doesn't provide secrecy\");\n"
+					+ getPrintCode("secrecy", "fieldSignature", "$1.getClass()") 
+				+ "}" 
+			+ "}"
+				// Counter measure
+				+ "$_ = $0.get($1);\n"; //TODO: Store result of countermeasure in $_
+		methodCall.replace(code);
 	}
 
 	@Override

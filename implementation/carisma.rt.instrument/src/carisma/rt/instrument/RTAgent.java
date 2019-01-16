@@ -6,8 +6,24 @@ import java.lang.instrument.Instrumentation;
 
 public class RTAgent {
 	
+	/**
+	 * If debug mode is enabled
+	 */
 	public static boolean DEBUG = false;
+	
+	/**
+	 * If recording sequence diagrams is enabled
+	 */
 	public static boolean PRINT = false;
+	
+	/**
+	 * If calls should be traced after detecting a violation
+	 */
+	public static boolean TRACE = false; 
+	
+	/**
+	 * The output location
+	 */
 	public static File OUT = new File(".");
 	
 	public static void premain(String args, Instrumentation instrumentation) {
@@ -37,6 +53,9 @@ public class RTAgent {
 				switch(a[0].trim().toLowerCase()) {
 				case "debug":
 					DEBUG = true;
+					break;
+				case "trace":
+					TRACE = true;
 					break;
 				case "print":
 					PRINT = true;
