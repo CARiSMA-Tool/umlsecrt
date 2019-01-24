@@ -44,7 +44,6 @@ public class RTHelper {
 			type = owner;
 		} else if (member instanceof CtMethod) {
 			type = ((CtMethod) member).getReturnType();
-
 		} else if (member instanceof CtField) {
 			type = ((CtField) member).getType();
 		} else {
@@ -112,13 +111,16 @@ public class RTHelper {
 	 * @return The fields signature
 	 */
 	public static String getSignature(CtField field) {
-		String signature = field.getDeclaringClass().getName() + "." + field.getName();
+		StringBuilder signature = new StringBuilder(field.getDeclaringClass().getName());
+		signature.append('.');
+		signature.append(field.getName());
 		try {
-			signature += ":" + field.getType().getSimpleName();
+			signature.append('.');
+			signature.append(field.getType().getSimpleName());
 		} catch (NotFoundException e) {
 			printAgentError(e);
 		}
-		return signature;
+		return signature.toString();
 	}
 
 	/**

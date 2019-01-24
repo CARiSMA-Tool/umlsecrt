@@ -10,7 +10,6 @@ import org.gravity.security.annotations.requirements.Secrecy;
 import javassist.CannotCompileException;
 import javassist.CtClass;
 import javassist.CtField;
-import javassist.CtMethod;
 import javassist.NotFoundException;
 import javassist.expr.ExprEditor;
 import javassist.expr.FieldAccess;
@@ -31,19 +30,13 @@ final class RTFieldAccessCheck extends ExprEditor {
 
 	@Override
 	public void edit(MethodCall methodCall) throws CannotCompileException {
-		try {
-			CtMethod reflectiveMethod = methodCall.getMethod();
-			CtClass methodDeclaringClass = reflectiveMethod.getDeclaringClass();
-			if ("java.lang.reflect.Field".equals(methodDeclaringClass.getName())) {
-				final String reflectiveMethodName = reflectiveMethod.getName();
-				if ("get".equals(reflectiveMethodName)) {
-					reflectiveGet(methodCall);
-				} else if ("set".equals(reflectiveMethodName)) {
-					reflectiveSet(methodCall);
-				}
+		if ("java.lang.reflect.Field".equals(methodCall.getClassName())) {
+			final String reflectiveMethodName = methodCall.getMethodName();
+			if ("get".equals(reflectiveMethodName)) {
+				reflectiveGet(methodCall);
+			} else if ("set".equals(reflectiveMethodName)) {
+				reflectiveSet(methodCall);
 			}
-		} catch (NotFoundException e) {
-			RTHelper.printAgentError(e);
 		}
 	}
 
@@ -62,8 +55,8 @@ final class RTFieldAccessCheck extends ExprEditor {
 				+ "if(!hasIntegrity){"
 				+ "org.gravity.security.annotations.requirements.Critical critical = (org.gravity.security.annotations.requirements.Critical) $1.getClass().getAnnotation(org.gravity.security.annotations.requirements.Critical.class);\n"
 				+ "if(critical!=null){"
-				+ "hasIntegrity = java.util.Arrays.asList(critical.integrity()).contains(fieldSignature);\n"
-				+ "}" + "}";
+				+ "hasIntegrity = java.util.Arrays.asList(critical.integrity()).contains(fieldSignature);\n" + "}"
+				+ "}";
 
 		// check if caller has integrity for field
 		code += "boolean callerHasAnnotation = false;\n";
@@ -74,18 +67,18 @@ final class RTFieldAccessCheck extends ExprEditor {
 		code += "if(hasIntegrity){ " + "if(!callerHasAnnotation){"
 		// If the caller has integrity the field needs integrity
 				+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION INTEGRITY: The field \"+fieldSignature+\" requires integrity but "
-				+ declaringClass.getName() + " doesn't provide integrity\");\n" + getPrintCode("integrity", "fieldSignature", "$1.getClass()") 
-				+ "throw new java.lang.SecurityException(\"UMLsecRT: [integrity]\");"
-				+ "}"
-				+ "} else {" + "if(callerHasAnnotation){"
+				+ declaringClass.getName() + " doesn't provide integrity\");\n"
+				+ getPrintCode("integrity", "fieldSignature", "$1.getClass()")
+				+ "throw new java.lang.SecurityException(\"UMLsecRT: [integrity]\");" + "}" + "} else {"
+				+ "if(callerHasAnnotation){"
 				// If the caller doesn't has integrity but the field has integrity we have a
 				// violation
 				+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION INTEGRITY: caller "
 				+ declaringClass.getName()
 				+ " requires integrity but \"+fieldSignature+\" doesn't provide integrity\");\n"
-				+ getPrintCode("integrity", "fieldSignature", "$1.getClass()") + "}" + "}" 
-				//Perform counter measure
-				+ "$0.set($1, $2);\n"; //TODO: Counter measure to get value of $2
+				+ getPrintCode("integrity", "fieldSignature", "$1.getClass()") + "}" + "}"
+				// Perform counter measure
+				+ "$0.set($1, $2);\n"; // TODO: Counter measure to get value of $2
 		methodCall.replace(code);
 	}
 
@@ -105,8 +98,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 				+ "if(!hasSecrecy){"
 				+ "org.gravity.security.annotations.requirements.Critical critical = (org.gravity.security.annotations.requirements.Critical) $1.getClass().getAnnotation(org.gravity.security.annotations.requirements.Critical.class);\n"
 				+ "if(critical!=null){"
-				+ "hasSecrecy = java.util.Arrays.asList(critical.secrecy()).contains(fieldSignature);\n"
-				+ "}" + "}";
+				+ "hasSecrecy = java.util.Arrays.asList(critical.secrecy()).contains(fieldSignature);\n" + "}" + "}";
 
 		// Check if the caller requires the secrecy level for the field
 		code += "boolean callerHasAnnotation = false;\n";
@@ -115,23 +107,17 @@ final class RTFieldAccessCheck extends ExprEditor {
 		}
 
 		// Check
-		code += "if(hasSecrecy){" 
-				+ "if(!callerHasAnnotation){"
-					+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The field \"+fieldSignature+\" requires secrecy but "
-					+ declaringClass.getName() + " doesn't provide secrecy\");\n" 
-					+ getPrintCode("secrecy", "fieldSignature", "$1.getClass()")
-					+ "throw new java.lang.SecurityException(\"UMLsecRT: [secrecy]\");"
-				+ "}"
-			+ "} else {" 
+		code += "if(hasSecrecy){" + "if(!callerHasAnnotation){"
+				+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The field \"+fieldSignature+\" requires secrecy but "
+				+ declaringClass.getName() + " doesn't provide secrecy\");\n"
+				+ getPrintCode("secrecy", "fieldSignature", "$1.getClass()")
+				+ "throw new java.lang.SecurityException(\"UMLsecRT: [secrecy]\");" + "}" + "} else {"
 				+ "if(callerHasAnnotation){"
-					+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The caller "
-					+ declaringClass.getName()
-					+ " requires secrecy but \"+fieldSignature+\" doesn't provide secrecy\");\n"
-					+ getPrintCode("secrecy", "fieldSignature", "$1.getClass()") 
-				+ "}" 
-			+ "}"
+				+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The caller "
+				+ declaringClass.getName() + " requires secrecy but \"+fieldSignature+\" doesn't provide secrecy\");\n"
+				+ getPrintCode("secrecy", "fieldSignature", "$1.getClass()") + "}" + "}"
 				// Counter measure
-				+ "$_ = $0.get($1);\n"; //TODO: Store result of countermeasure in $_
+				+ "$_ = $0.get($1);\n"; // TODO: Store result of countermeasure in $_
 		methodCall.replace(code);
 	}
 
@@ -150,8 +136,10 @@ final class RTFieldAccessCheck extends ExprEditor {
 
 			Critical fieldClassCritical = (Critical) field.getDeclaringClass().getAnnotation(Critical.class);
 			if (fieldClassCritical != null) {
-				fieldHasSecrecy |= fieldHasSecrecy || Arrays.asList(fieldClassCritical.secrecy()).contains(fieldSignature);
-				fieldHasIntegrity |= fieldHasIntegrity || Arrays.asList(fieldClassCritical.integrity()).contains(fieldSignature);
+				fieldHasSecrecy |= fieldHasSecrecy
+						|| Arrays.asList(fieldClassCritical.secrecy()).contains(fieldSignature);
+				fieldHasIntegrity |= fieldHasIntegrity
+						|| Arrays.asList(fieldClassCritical.integrity()).contains(fieldSignature);
 			}
 
 			// Check secrecy only for read
@@ -164,7 +152,8 @@ final class RTFieldAccessCheck extends ExprEditor {
 				}
 				if (callerHasSecrecyForField && !fieldHasSecrecy) {
 					System.out.println("[AGENT] SECURITY VIOLATION SECRECY - Field has no secrecy: " + fieldSignature);
-					fieldAccess.replace(getPrintCode("secrecy", '\"'+RTHelper.getSignature(field)+'\"', "$class")+"$_ = $0."+field.getName()+";");
+					fieldAccess.replace(getPrintCode("secrecy", '\"' + RTHelper.getSignature(field) + '\"', "$class")
+							+ "$_ = $0." + field.getName() + ";");
 				}
 			}
 
@@ -177,8 +166,10 @@ final class RTFieldAccessCheck extends ExprEditor {
 					counterMeasureFieldWrite(fieldAccess, field);
 				}
 				if (callerHasIntegrityForField && !fieldHasIntegrity) {
-					System.out.println("[AGENT] SECURITY VIOLATION INTEGRITY - Field has no integrity: " + fieldSignature);
-					fieldAccess.replace(getPrintCode("integrity", '\"'+RTHelper.getSignature(field)+'\"', "$class")+"$1=$0." + field.getName() + ";\n");
+					System.out.println(
+							"[AGENT] SECURITY VIOLATION INTEGRITY - Field has no integrity: " + fieldSignature);
+					fieldAccess.replace(getPrintCode("integrity", '\"' + RTHelper.getSignature(field) + '\"', "$class")
+							+ "$1=$0." + field.getName() + ";\n");
 				}
 			}
 
@@ -199,7 +190,8 @@ final class RTFieldAccessCheck extends ExprEditor {
 		try {
 			String earlyReturn = RTHelper.getEarlyReturn(field, Secrecy.class);
 			if (earlyReturn != null) {
-				StringBuilder replacement = new StringBuilder(getPrintCode("secrecy", '\"'+RTHelper.getSignature(field)+'\"', "$class"));
+				StringBuilder replacement = new StringBuilder(
+						getPrintCode("secrecy", '\"' + RTHelper.getSignature(field) + '\"', "$class"));
 				replacement.append("$_=");
 				if (earlyReturn.endsWith("()")) {
 					replacement.append("$0.");
@@ -208,7 +200,8 @@ final class RTFieldAccessCheck extends ExprEditor {
 				replacement.append(';');
 				access.replace(replacement.toString());
 			} else {
-				access.replace(getPrintCode("secrecy", '\"'+RTHelper.getSignature(field)+'\"', "$class")+"$_ = $0."+field.getName()+";");
+				access.replace(getPrintCode("secrecy", '\"' + RTHelper.getSignature(field) + '\"', "$class")
+						+ "$_ = $0." + field.getName() + ";");
 				System.out.println("[AGENT] No counter measure specified");
 			}
 			return true;
@@ -231,7 +224,8 @@ final class RTFieldAccessCheck extends ExprEditor {
 			String earlyReturn = RTHelper.getEarlyReturn(field, Integrity.class);
 			System.out.println("[AGENT] The earlyReturn is: " + earlyReturn);
 			if (earlyReturn != null) {
-				StringBuilder replacement = new StringBuilder(getPrintCode("integrity", '\"'+RTHelper.getSignature(field)+'\"', "$class"));
+				StringBuilder replacement = new StringBuilder(
+						getPrintCode("integrity", '\"' + RTHelper.getSignature(field) + '\"', "$class"));
 				replacement.append("$0.");
 				replacement.append(field.getName());
 				replacement.append('=');
@@ -244,7 +238,8 @@ final class RTFieldAccessCheck extends ExprEditor {
 			} else {
 				System.out.println("[AGENT] No counter measure specified, forbidding field write");
 				// For illegal field writes we aren't changing the field in this case
-				access.replace(getPrintCode("integrity", '\"'+RTHelper.getSignature(field)+'\"', "$class")+"$1=$0." + field.getName() + ";\n");
+				access.replace(getPrintCode("integrity", '\"' + RTHelper.getSignature(field) + '\"', "$class")
+						+ "$1=$0." + field.getName() + ";\n");
 			}
 			return true;
 		} catch (CannotCompileException | NotFoundException e) {
@@ -254,11 +249,11 @@ final class RTFieldAccessCheck extends ExprEditor {
 	}
 
 	private String getPrintCode(String violation, String fieldSignature, String clazz) {
-		String print = "carisma.rt.instrument.RTStack$PrintableStack s = carisma.rt.instrument.RTStack.getStack(java.lang.Thread.currentThread());"
-				+ "carisma.rt.instrument.RTStack$RTAnnotation annotation = new carisma.rt.instrument.RTStack$RTAnnotation("+fieldSignature+", "+clazz+" ,java.util.Collections.emptySet(), java.util.Collections.emptySet());\n"
-				+ "s.push(annotation);\n"
-				+ "s.print(java.util.Collections.singleton(\""+violation+"\"));"
-				+ "s.pop();";
+		String print = "carisma.rt.instrument.RTStack s = carisma.rt.instrument.RTStackManager.getStack(java.lang.Thread.currentThread());"
+				+ "carisma.rt.instrument.RTAnnotation annotation = new carisma.rt.instrument.RTAnnotation("
+				+ fieldSignature + ", " + clazz
+				+ " ,java.util.Collections.emptySet(), java.util.Collections.emptySet());\n" + "s.push(annotation);\n"
+				+ "s.print(java.util.Collections.singleton(\"" + violation + "\"));" + "s.pop();";
 		return print;
 	}
 }

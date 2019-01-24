@@ -33,6 +33,8 @@ public class RTTransformer implements ClassFileTransformer {
 	private RTFieldAccessCheck fieldCheck;
 	private Set<String> classSecrecy;
 	private Set<String> classIntegrity;
+	
+	private final ClassPool cPool = ClassPool.getDefault();
 
 	@Override
 	public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined,
@@ -52,7 +54,6 @@ public class RTTransformer implements ClassFileTransformer {
 		byte[] bytecode;
 		String classNameDotted = className.replaceAll("/", ".");
 
-		ClassPool cPool = ClassPool.getDefault();
 		ClassPath byteArrayClassPath = new ByteArrayClassPath(classNameDotted, classfileBuffer);
 		LoaderClassPath loaderClassPath = new LoaderClassPath(loader);
 
@@ -194,15 +195,15 @@ public class RTTransformer implements ClassFileTransformer {
 
 		// Get stack
 		before.append(
-				"carisma.rt.instrument.RTStack$PrintableStack carismaRtStack = carisma.rt.instrument.RTStack.getStack(java.lang.Thread.currentThread());");
+				"carisma.rt.instrument.RTStack carismaRtStack = carisma.rt.instrument.RTStackManager.getStack(java.lang.Thread.currentThread());");
 
 		// Get Top of stack
 		before.append(
-				"carisma.rt.instrument.RTStack$RTAnnotation annot = null; if(!carismaRtStack.isEmpty()){ annot = (carisma.rt.instrument.RTStack$RTAnnotation) carismaRtStack.peek(); }");
+				"carisma.rt.instrument.RTAnnotation annot = null; if(!carismaRtStack.isEmpty()){ annot = (carisma.rt.instrument.RTAnnotation) carismaRtStack.peek(); }");
 		
 		// Collect secrecy and integrity information about called method
-		before.append("java.util.Set secrecySet = new java.util.HashSet();")
-				.append("java.util.Set integritySet = new java.util.HashSet();");
+		before.append("java.util.List secrecySet = new java.util.ArrayList();")
+				.append("java.util.List integritySet = new java.util.ArrayList();");
 		for (String s : classSecrecy) {
 			hasSecrecy = hasSecrecy || methodSignature.equals(s);
 			before.append("secrecySet.add(\"" + s + "\");");
@@ -218,9 +219,15 @@ public class RTTransformer implements ClassFileTransformer {
 					.append(" secrecy=\"+secrecySet+\" integrity=\"+integritySet);");
 		}
 
-		before.append("Class thisClass = ").append(className).append(".class;");
+		if(Modifier.isStatic(ctBehavior.getModifiers())){
+			before.append("Class thisClass = ").append(declaringClass.getName()).append(".class;");
+		}
+		else {
+			before.append("Class thisClass = getClass();");
+		}
+		
 		// Add called method to stack
-		before.append("carisma.rt.instrument.RTStack$RTAnnotation o = new carisma.rt.instrument.RTStack$RTAnnotation(\"")
+		before.append("carisma.rt.instrument.RTAnnotation o = new carisma.rt.instrument.RTAnnotation(\"")
 				.append(RTHelper.getSignature(ctBehavior)).append("\" , thisClass, secrecySet, integritySet);").append("carismaRtStack.push(o);");
 
 		// Only perform the security check if there was an element on the stack and it is not defined in the same class
@@ -338,7 +345,7 @@ public class RTTransformer implements ClassFileTransformer {
 	 */
 	private boolean addAfterMethod(CtBehavior ctBehavior) {
 		try {
-			ctBehavior.insertAfter("carisma.rt.instrument.RTStack.getStack(java.lang.Thread.currentThread()).pop();");
+			ctBehavior.insertAfter("carisma.rt.instrument.RTStackManager.getStack(java.lang.Thread.currentThread()).pop();");
 		} catch (CannotCompileException e) {
 			System.out.println("------> ctBehavior.insertAfter(after)");
 			RTHelper.printAgentError(e);
