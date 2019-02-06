@@ -33,7 +33,7 @@ public class RTTransformer implements ClassFileTransformer {
 	private RTFieldAccessCheck fieldCheck;
 	private Set<String> classSecrecy;
 	private Set<String> classIntegrity;
-	
+
 	private final ClassPool cPool = ClassPool.getDefault();
 
 	@Override
@@ -96,7 +96,6 @@ public class RTTransformer implements ClassFileTransformer {
 		getAnnotations(ctClass);
 		fieldCheck = new RTFieldAccessCheck(ctClass, classIntegrity, classSecrecy);
 
-		boolean stackAdded = false;
 		for (CtBehavior behavior : ctClass.getDeclaredBehaviors()) {
 			int modifiers = behavior.getModifiers();
 			if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
@@ -196,11 +195,10 @@ public class RTTransformer implements ClassFileTransformer {
 		// Get stack
 		before.append(
 				"carisma.rt.instrument.RTStack carismaRtStack = carisma.rt.instrument.RTStackManager.getStack(java.lang.Thread.currentThread());");
-
 		// Get Top of stack
 		before.append(
 				"carisma.rt.instrument.RTAnnotation annot = null; if(!carismaRtStack.isEmpty()){ annot = (carisma.rt.instrument.RTAnnotation) carismaRtStack.peek(); }");
-		
+
 		// Collect secrecy and integrity information about called method
 		before.append("java.util.List secrecySet = new java.util.ArrayList();")
 				.append("java.util.List integritySet = new java.util.ArrayList();");
@@ -219,18 +217,19 @@ public class RTTransformer implements ClassFileTransformer {
 					.append(" secrecy=\"+secrecySet+\" integrity=\"+integritySet);");
 		}
 
-		if(Modifier.isStatic(ctBehavior.getModifiers())){
+		if (Modifier.isStatic(ctBehavior.getModifiers())) {
 			before.append("Class thisClass = ").append(declaringClass.getName()).append(".class;");
-		}
-		else {
+		} else {
 			before.append("Class thisClass = getClass();");
 		}
-		
+
 		// Add called method to stack
 		before.append("carisma.rt.instrument.RTAnnotation o = new carisma.rt.instrument.RTAnnotation(\"")
-				.append(RTHelper.getSignature(ctBehavior)).append("\" , thisClass, secrecySet, integritySet);").append("carismaRtStack.push(o);");
+				.append(RTHelper.getSignature(ctBehavior)).append("\" , thisClass, secrecySet, integritySet);")
+				.append("carismaRtStack.push(o);");
 
-		// Only perform the security check if there was an element on the stack and it is not defined in the same class
+		// Only perform the security check if there was an element on the stack and it
+		// is not defined in the same class
 		before.append("if(annot != null && !annot.getClazz().equals(thisClass)){");
 
 		// Get the caller and its security properties

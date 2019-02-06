@@ -30,6 +30,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 
 	@Override
 	public void edit(MethodCall methodCall) throws CannotCompileException {
+		super.edit(methodCall);
 		if ("java.lang.reflect.Field".equals(methodCall.getClassName())) {
 			final String reflectiveMethodName = methodCall.getMethodName();
 			if ("get".equals(reflectiveMethodName)) {
@@ -45,7 +46,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 	 * @throws CannotCompileException
 	 */
 	private void reflectiveSet(MethodCall methodCall) throws CannotCompileException {
-		String code = "String fieldSignature = $1.getClass().getName()+'.'+$0.getName()+':'+$0.getType().getSimpleName();\n";
+		String code = "String fieldSignature = $0.getDeclaringClass().getName()+'.'+$0.getName()+':'+$0.getType().getSimpleName();\n";
 		if (DEBUG) {
 			code += "System.out.println(\"[INSTRUMENTATION] Reflective field access to: \"+fieldSignature);\n";
 		}
@@ -53,7 +54,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 		// check if field has integrity level
 		code += "boolean hasIntegrity = $0.isAnnotationPresent(org.gravity.security.annotations.requirements.Integrity.class);\n"
 				+ "if(!hasIntegrity){"
-				+ "org.gravity.security.annotations.requirements.Critical critical = (org.gravity.security.annotations.requirements.Critical) $1.getClass().getAnnotation(org.gravity.security.annotations.requirements.Critical.class);\n"
+				+ "org.gravity.security.annotations.requirements.Critical critical = (org.gravity.security.annotations.requirements.Critical) $0.getDeclaringClass().getAnnotation(org.gravity.security.annotations.requirements.Critical.class);\n"
 				+ "if(critical!=null){"
 				+ "hasIntegrity = java.util.Arrays.asList(critical.integrity()).contains(fieldSignature);\n" + "}"
 				+ "}";
@@ -68,7 +69,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 		// If the caller has integrity the field needs integrity
 				+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION INTEGRITY: The field \"+fieldSignature+\" requires integrity but "
 				+ declaringClass.getName() + " doesn't provide integrity\");\n"
-				+ getPrintCode("integrity", "fieldSignature", "$1.getClass()")
+				+ getPrintCode("integrity", "fieldSignature", "$0.getDeclaringClass()")
 				+ "throw new java.lang.SecurityException(\"UMLsecRT: [integrity]\");" + "}" + "} else {"
 				+ "if(callerHasAnnotation){"
 				// If the caller doesn't has integrity but the field has integrity we have a
@@ -76,7 +77,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 				+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION INTEGRITY: caller "
 				+ declaringClass.getName()
 				+ " requires integrity but \"+fieldSignature+\" doesn't provide integrity\");\n"
-				+ getPrintCode("integrity", "fieldSignature", "$1.getClass()") + "}" + "}"
+				+ getPrintCode("integrity", "fieldSignature", "$0.getDeclaringClass()") + "}" + "}"
 				// Perform counter measure
 				+ "$0.set($1, $2);\n"; // TODO: Counter measure to get value of $2
 		methodCall.replace(code);
@@ -87,7 +88,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 	 * @throws CannotCompileException
 	 */
 	private void reflectiveGet(MethodCall methodCall) throws CannotCompileException {
-		String code = "String fieldSignature = $1.getClass().getName()+'.'+$0.getName()+':'+$0.getType().getSimpleName();\n";
+		String code = "String fieldSignature = $0.getDeclaringClass().getName()+'.'+$0.getName()+':'+$0.getType().getSimpleName();\n";
 
 		if (DEBUG) {
 			code += "System.out.println(\"[INSTRUMENTATION] Reflective field access to: \"+fieldSignature);\n";
@@ -96,7 +97,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 		// Check if the field is on the secrecy level
 		code += "boolean hasSecrecy = $0.isAnnotationPresent(org.gravity.security.annotations.requirements.Secrecy.class);\n"
 				+ "if(!hasSecrecy){"
-				+ "org.gravity.security.annotations.requirements.Critical critical = (org.gravity.security.annotations.requirements.Critical) $1.getClass().getAnnotation(org.gravity.security.annotations.requirements.Critical.class);\n"
+				+ "org.gravity.security.annotations.requirements.Critical critical = (org.gravity.security.annotations.requirements.Critical) $0.getDeclaringClass().getAnnotation(org.gravity.security.annotations.requirements.Critical.class);\n"
 				+ "if(critical!=null){"
 				+ "hasSecrecy = java.util.Arrays.asList(critical.secrecy()).contains(fieldSignature);\n" + "}" + "}";
 
@@ -110,12 +111,12 @@ final class RTFieldAccessCheck extends ExprEditor {
 		code += "if(hasSecrecy){" + "if(!callerHasAnnotation){"
 				+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The field \"+fieldSignature+\" requires secrecy but "
 				+ declaringClass.getName() + " doesn't provide secrecy\");\n"
-				+ getPrintCode("secrecy", "fieldSignature", "$1.getClass()")
+				+ getPrintCode("secrecy", "fieldSignature", "$0.getDeclaringClass()")
 				+ "throw new java.lang.SecurityException(\"UMLsecRT: [secrecy]\");" + "}" + "} else {"
 				+ "if(callerHasAnnotation){"
 				+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The caller "
 				+ declaringClass.getName() + " requires secrecy but \"+fieldSignature+\" doesn't provide secrecy\");\n"
-				+ getPrintCode("secrecy", "fieldSignature", "$1.getClass()") + "}" + "}"
+				+ getPrintCode("secrecy", "fieldSignature", "$0.getDeclaringClass()") + "}" + "}"
 				// Counter measure
 				+ "$_ = $0.get($1);\n"; // TODO: Store result of countermeasure in $_
 		methodCall.replace(code);
