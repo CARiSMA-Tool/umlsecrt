@@ -21,6 +21,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 	private final CtClass declaringClass;
 	private final Collection<String> integrity;
 	private final Collection<String> secrecy;
+	private final String url = getClass().getProtectionDomain().getCodeSource().getLocation().toString();
 
 	RTFieldAccessCheck(CtClass declaringClass, Collection<String> integrity, Collection<String> secrecy) {
 		this.declaringClass = declaringClass;
@@ -52,9 +53,22 @@ final class RTFieldAccessCheck extends ExprEditor {
 		}
 
 		// check if field has integrity level
-		code += "boolean hasIntegrity = $0.isAnnotationPresent(org.gravity.security.annotations.requirements.Integrity.class);\n"
+		code += "Class integrityClass;" + "try {" 
+				+ "integrityClass = Class.forName(\"org.gravity.security.annotations.requirements.Integrity\");\n"
+				+ "}catch(java.lang.ClassNotFoundException e){"
+				+ "integrityClass = Class.forName(\"org.gravity.security.annotations.requirements.Integrity\",true, new java.net.URLClassLoader(new java.net.URL[]{new java.net.URL(\""
+				+ url +"\")}));" + "}";	
+		
+		code += "boolean hasIntegrity = $0.isAnnotationPresent(integrityClass);\n"
 				+ "if(!hasIntegrity){"
-				+ "org.gravity.security.annotations.requirements.Critical critical = (org.gravity.security.annotations.requirements.Critical) $0.getDeclaringClass().getAnnotation(org.gravity.security.annotations.requirements.Critical.class);\n"
+				+ "Class criticalAnnotation;"
+				+ "try {"
+				+ "criticalAnnotation = Class.forName(\"org.gravity.security.annotations.requirements.Critical\");"
+				+ "}catch(java.lang.ClassNotFoundException e){"
+				+ "criticalAnnotation = Class.forName(\"org.gravity.security.annotations.requirements.Critical\",true, new java.net.URLClassLoader(new java.net.URL[]{new java.net.URL(\""
+				+ url +"\")}));"
+				+ "}"
+				+ "org.gravity.security.annotations.requirements.Critical critical = (org.gravity.security.annotations.requirements.Critical) $0.getDeclaringClass().getAnnotation(criticalAnnotation);\n"
 				+ "if(critical!=null){"
 				+ "hasIntegrity = java.util.Arrays.asList(critical.integrity()).contains(fieldSignature);\n" + "}"
 				+ "}";
@@ -69,7 +83,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 		// If the caller has integrity the field needs integrity
 				+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION INTEGRITY: The field \"+fieldSignature+\" requires integrity but "
 				+ declaringClass.getName() + " doesn't provide integrity\");\n"
-				+ getPrintCode("integrity", "fieldSignature", "$0.getDeclaringClass()")
+//				+ getPrintCode("integrity", "fieldSignature", "$0.getDeclaringClass()") //TODO: Re-enable when fixes
 				+ "throw new java.lang.SecurityException(\"UMLsecRT: [integrity]\");" + "}" + "} else {"
 				+ "if(callerHasAnnotation){"
 				// If the caller doesn't has integrity but the field has integrity we have a
@@ -77,9 +91,10 @@ final class RTFieldAccessCheck extends ExprEditor {
 				+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION INTEGRITY: caller "
 				+ declaringClass.getName()
 				+ " requires integrity but \"+fieldSignature+\" doesn't provide integrity\");\n"
-				+ getPrintCode("integrity", "fieldSignature", "$0.getDeclaringClass()") + "}" + "}"
+//				+ getPrintCode("integrity", "fieldSignature", "$0.getDeclaringClass()") //TODO: Fix
+				+ "}" + "}";
 				// Perform counter measure
-				+ "$0.set($1, $2);\n"; // TODO: Counter measure to get value of $2
+		code += "$0.set($1, $2);\n"; // TODO: Counter measure to get value of $2
 		methodCall.replace(code);
 	}
 
@@ -88,37 +103,59 @@ final class RTFieldAccessCheck extends ExprEditor {
 	 * @throws CannotCompileException
 	 */
 	private void reflectiveGet(MethodCall methodCall) throws CannotCompileException {
-		String code = "String fieldSignature = $0.getDeclaringClass().getName()+'.'+$0.getName()+':'+$0.getType().getSimpleName();\n";
+		String code = "Class declaringClass = $0.getDeclaringClass();"
+				+ "String fieldSignature = declaringClass.getName()+'.'+$0.getName()+':'+$0.getType().getSimpleName();\n";
 
 		if (DEBUG) {
 			code += "System.out.println(\"[INSTRUMENTATION] Reflective field access to: \"+fieldSignature);\n";
 		}
 
 		// Check if the field is on the secrecy level
-		code += "boolean hasSecrecy = $0.isAnnotationPresent(org.gravity.security.annotations.requirements.Secrecy.class);\n"
-				+ "if(!hasSecrecy){"
-				+ "org.gravity.security.annotations.requirements.Critical critical = (org.gravity.security.annotations.requirements.Critical) $0.getDeclaringClass().getAnnotation(org.gravity.security.annotations.requirements.Critical.class);\n"
-				+ "if(critical!=null){"
-				+ "hasSecrecy = java.util.Arrays.asList(critical.secrecy()).contains(fieldSignature);\n" + "}" + "}";
+
+		code += "Class secrecyClass;" + "try {" 
+				+ "secrecyClass = Class.forName(\"org.gravity.security.annotations.requirements.Secrecy\");\n"
+				+ "}catch(java.lang.ClassNotFoundException e){"
+				+ "secrecyClass = Class.forName(\"org.gravity.security.annotations.requirements.Secrecy\",true, new java.net.URLClassLoader(new java.net.URL[]{new java.net.URL(\""
+				+ url +"\")}));" + "}";		
+		//END new part
+		
+		code += "boolean hasSecrecy = $0.isAnnotationPresent(secrecyClass);\n";
+		code += "if(!hasSecrecy){"
+					+ "Class criticalAnnotation;"
+					+ "try {"
+					+ "criticalAnnotation = Class.forName(\"org.gravity.security.annotations.requirements.Critical\");"
+					+ "}catch(java.lang.ClassNotFoundException e){"
+					+ "criticalAnnotation = Class.forName(\"org.gravity.security.annotations.requirements.Critical\",true, new java.net.URLClassLoader(new java.net.URL[]{new java.net.URL(\""
+					+ url +"\")}));"
+					+ "}"
+					+ "org.gravity.security.annotations.requirements.Critical critical = (org.gravity.security.annotations.requirements.Critical) declaringClass.getAnnotation(criticalAnnotation);\n"
+					+ "if(critical!=null){"
+						+ "hasSecrecy = java.util.Arrays.asList(critical.secrecy()).contains(fieldSignature);\n" 
+					+ "}" 
+				+ "}";
 
 		// Check if the caller requires the secrecy level for the field
 		code += "boolean callerHasAnnotation = false;\n";
 		for (String s : secrecy) {
 			code += "callerHasAnnotation |= \"" + s + "\".equals(fieldSignature);\n";
 		}
-
+		
 		// Check
-		code += "if(hasSecrecy){" + "if(!callerHasAnnotation){"
-				+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The field \"+fieldSignature+\" requires secrecy but "
+		code += "if(hasSecrecy){" 
+				+ "if(!callerHasAnnotation){"
+					+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The field \"+fieldSignature+\" requires secrecy but "
 				+ declaringClass.getName() + " doesn't provide secrecy\");\n"
-				+ getPrintCode("secrecy", "fieldSignature", "$0.getDeclaringClass()")
-				+ "throw new java.lang.SecurityException(\"UMLsecRT: [secrecy]\");" + "}" + "} else {"
+//				+ getPrintCode("secrecy", "fieldSignature", "declaringClass") //TODO: Fix
+				+ "throw new java.lang.SecurityException(\"UMLsecRT: [secrecy]\");" 
+					+ "}" 
+				+ "} else {"
 				+ "if(callerHasAnnotation){"
 				+ "System.out.println(\"[INSTRUMENTATION] JAVA REFLECTION - SECURITY VIOLATION SECRECY: The caller "
 				+ declaringClass.getName() + " requires secrecy but \"+fieldSignature+\" doesn't provide secrecy\");\n"
-				+ getPrintCode("secrecy", "fieldSignature", "$0.getDeclaringClass()") + "}" + "}"
+//				+ getPrintCode("secrecy", "fieldSignature", "declaringClass")  //TODO: Fix
+				+ "}" + "}";
 				// Counter measure
-				+ "$_ = $0.get($1);\n"; // TODO: Store result of countermeasure in $_
+		code += "$_ = $0.get($$);\n"; // TODO: Store result of countermeasure in $_
 		methodCall.replace(code);
 	}
 
@@ -250,6 +287,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 	}
 
 	private String getPrintCode(String violation, String fieldSignature, String clazz) {
+		//TODO: Use url classloader for loading RTStack and RTAnnotation
 		String print = "carisma.rt.instrument.RTStack s = carisma.rt.instrument.RTStackManager.getStack(java.lang.Thread.currentThread());"
 				+ "carisma.rt.instrument.RTAnnotation annotation = new carisma.rt.instrument.RTAnnotation("
 				+ fieldSignature + ", " + clazz
