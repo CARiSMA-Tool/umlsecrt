@@ -53,6 +53,11 @@ public class RTTransformer implements ClassFileTransformer {
 
 		byte[] bytecode;
 		String classNameDotted = className.replaceAll("/", ".");
+		
+		if(classNameDotted.startsWith("carisma.rt.instrument")) {
+//			System.out.println("[AGENT] skip "+classNameDotted);
+			return classfileBuffer;
+		}
 
 		ClassPath byteArrayClassPath = new ByteArrayClassPath(classNameDotted, classfileBuffer);
 		LoaderClassPath loaderClassPath = new LoaderClassPath(loader);
@@ -62,11 +67,18 @@ public class RTTransformer implements ClassFileTransformer {
 
 		try {
 			CtClass ctClass = cPool.get(classNameDotted);
+			if(ctClass.isFrozen()) {
+				bytecode = classfileBuffer;
+				System.out.println("Frozen Class: "+classNameDotted);
+			}
+			else {
+			// Interfaces cannot contain concrete m)
 			if (ctClass.isInterface()) {
 				// Interfaces cannot contain concrete methods and fields
 				bytecode = classfileBuffer;
 			} else {
 				bytecode = transform(classNameDotted, ctClass, cPool);
+			}
 			}
 		} catch (IOException | RuntimeException | ClassNotFoundException | NotFoundException
 				| CannotCompileException e) {
@@ -179,6 +191,7 @@ public class RTTransformer implements ClassFileTransformer {
 
 	private boolean addBeforeMethod(CtClass declaringClass, CtBehavior ctBehavior, String className)
 			throws ClassNotFoundException, NotFoundException {
+		
 		// Get the annotations on this member
 		final Integrity integrityAnnotation = (Integrity) ctBehavior.getAnnotation(Integrity.class);
 		final Secrecy secrecyAnnotation = (Secrecy) ctBehavior.getAnnotation(Secrecy.class);
@@ -191,13 +204,12 @@ public class RTTransformer implements ClassFileTransformer {
 		}
 
 		String methodSignature = ctBehavior.getLongName();
-
+		
 		// Get stack
-		before.append(
-				"carisma.rt.instrument.RTStack carismaRtStack = carisma.rt.instrument.RTStackManager.getStack(java.lang.Thread.currentThread());");
+		before.append("carisma.rt.instrument.RTStack carismaRtStack = carisma.rt.instrument.RTStackManager.getStack(java.lang.Thread.currentThread());");
+		
 		// Get Top of stack
-		before.append(
-				"carisma.rt.instrument.RTAnnotation annot = null; if(!carismaRtStack.isEmpty()){ annot = (carisma.rt.instrument.RTAnnotation) carismaRtStack.peek(); }");
+		before.append("carisma.rt.instrument.RTAnnotation annot = null; if(!carismaRtStack.isEmpty()){ annot = (carisma.rt.instrument.RTAnnotation) carismaRtStack.peek(); }");
 
 		// Collect secrecy and integrity information about called method
 		before.append("java.util.List secrecySet = new java.util.ArrayList();")
@@ -281,7 +293,7 @@ public class RTTransformer implements ClassFileTransformer {
 					integrityAnnotation.earlyReturn());
 			if (earlyReturnIntegrity != null) {
 				before.append("System.err.println(\"[SECURITY VIOLATION INTEGRITY] - early return\");")
-						// Add call of early return
+				// Add call of early return
 						.append("return ").append(earlyReturnIntegrity).append(";"); // TODO: move behind print;
 			}
 			before.append("}");
@@ -307,8 +319,8 @@ public class RTTransformer implements ClassFileTransformer {
 			}
 		} catch (CannotCompileException e) {
 			System.out.println("----> ctBehavior.insertBefore(before);");
-			System.out.println();
-			System.out.println(before);
+			System.out.println("Class: "+ctBehavior.getDeclaringClass().getName());
+			System.out.println("Behavior: "+ctBehavior.getLongName());
 			System.out.println();
 			RTHelper.printAgentError(e);
 			return false;
@@ -343,8 +355,15 @@ public class RTTransformer implements ClassFileTransformer {
 	 * @return
 	 */
 	private boolean addAfterMethod(CtBehavior ctBehavior) {
+		String string = "";
+		if("org.eclipse.osgi.internal.loader.BundleLoader".equals(ctBehavior.getDeclaringClass().getName())){
+			if("createClassLoader".equals(ctBehavior.getName())){
+				string = "parent = new java.net.URLClassLoader(new java.net.URL[]{new java.net.URL(\""+getClass().getProtectionDomain().getCodeSource().getLocation().toString()+"\")}, parent);";
+			}
+		}
 		try {
-			ctBehavior.insertAfter("carisma.rt.instrument.RTStackManager.getStack(java.lang.Thread.currentThread()).pop();");
+			string += "carisma.rt.instrument.RTStackManager.getStack(java.lang.Thread.currentThread()).pop();";
+			ctBehavior.insertAfter(string);
 		} catch (CannotCompileException e) {
 			System.out.println("------> ctBehavior.insertAfter(after)");
 			RTHelper.printAgentError(e);

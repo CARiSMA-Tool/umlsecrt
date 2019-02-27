@@ -11,6 +11,7 @@ import javassist.CannotCompileException;
 import javassist.CtClass;
 import javassist.CtField;
 import javassist.NotFoundException;
+import javassist.expr.ConstructorCall;
 import javassist.expr.ExprEditor;
 import javassist.expr.FieldAccess;
 import javassist.expr.MethodCall;
@@ -40,6 +41,17 @@ final class RTFieldAccessCheck extends ExprEditor {
 				reflectiveSet(methodCall);
 			}
 		}
+//		else if("java.net.URLClassLoader".equals(methodCall.getClassName())) {
+//			final String reflectiveMethodName = methodCall.getMethodName();
+//			if("newInstance".equals(reflectiveMethodName)) {
+//				String code = "java.net.URL[] newUrls = new java.net.URL[$1.length+1];"
+//						+ "newUrls[0] = new java.net.URL(\""+url+"\");"
+//						+ "System.arraycopy($1,0,newUrls,1,$1.length);"
+//						+ "$1 = newUrls;"
+//						+ "$_ = $proceed($$);";
+//				methodCall.replace(code);
+//			}
+//		}
 	}
 
 	/**
