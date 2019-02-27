@@ -22,7 +22,7 @@ public class RTStackManager {
 	 * @param thread The tread
 	 * @return The stack
 	 */
-	public static final RTStack getStack(Thread thread) {
+	public static synchronized final RTStack getStack(Thread thread) {
 		int index = threads.size();
 		while (--index >= 0) {
 			if (threads.get(index).equals(thread)) {
