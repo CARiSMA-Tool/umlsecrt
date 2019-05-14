@@ -276,9 +276,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 			if (earlyReturn != null) {
 				StringBuilder replacement = new StringBuilder(
 						getPrintCode("integrity", '\"' + RTHelper.getSignature(field) + '\"', "$class"));
-				replacement.append("$0.");
-				replacement.append(field.getName());
-				replacement.append('=');
+				replacement.append("$1=");
 				if (earlyReturn.endsWith("()")) {
 					replacement.append("$0.");
 				}
@@ -287,7 +285,7 @@ final class RTFieldAccessCheck extends ExprEditor {
 				access.replace(replacement.toString());
 			} else {
 				System.out.println("[AGENT] No counter measure specified, forbidding field write");
-				// For illegal field writes we aren't changing the field in this case
+				// For illegal field writes we changing the value of the field to the value of the field
 				access.replace(getPrintCode("integrity", '\"' + RTHelper.getSignature(field) + '\"', "$class")
 						+ "$1=$0." + field.getName() + ";\n");
 			}

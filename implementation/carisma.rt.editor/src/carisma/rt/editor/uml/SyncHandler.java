@@ -1,5 +1,6 @@
 package carisma.rt.editor.uml;
 
+import java.io.IOException;
 import java.util.List;
 
 import org.apache.log4j.Level;
@@ -39,7 +40,7 @@ public class SyncHandler extends AbstractHandler {
 					IJavaProject iJjavaProject = (IJavaProject) selected;
 					try {
 						Transformation.umlToProject(iJjavaProject, new NullProgressMonitor());
-					} catch (TransformationFailedException e) {
+					} catch (TransformationFailedException | IOException e) {
 						LOGGER.log(Level.ERROR, e.getMessage(), e);
 					}
 				}

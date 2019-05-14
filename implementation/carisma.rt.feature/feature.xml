@@ -101,6 +101,7 @@ Except as expressly stated in Sections 2(a) and 2(b) above, Recipient receives n
    <requires>
       <import plugin="org.eclipse.core.runtime" version="3.12.0" match="greaterOrEqual"/>
       <import plugin="org.eclipse.core.resources"/>
+      <import plugin="org.eclipse.emf.ecore"/>
       <import plugin="org.eclipse.jdt.core"/>
       <import plugin="org.eclipse.core.runtime" version="3.13.0" match="greaterOrEqual"/>
       <import plugin="org.eclipse.ui"/>
@@ -109,6 +110,7 @@ Except as expressly stated in Sections 2(a) and 2(b) above, Recipient receives n
       <import plugin="org.moflon.tgg.language"/>
       <import plugin="org.eclipse.e4.core.commands"/>
       <import plugin="org.eclipse.core.expressions"/>
+      <import plugin="org.gravity.eclipse"/>
       <import plugin="org.moflon.core.utilities"/>
       <import plugin="MocaTree"/>
       <import plugin="SDMLanguage"/>
@@ -116,11 +118,9 @@ Except as expressly stated in Sections 2(a) and 2(b) above, Recipient receives n
       <import plugin="org.eclipse.jdt.core" version="3.12.0" match="greaterOrEqual"/>
       <import plugin="org.eclipse.emf.compare"/>
       <import plugin="org.eclipse.modisco.java.discoverer"/>
-      <import plugin="org.gravity.eclipse"/>
       <import plugin="org.eclipse.gmt.modisco.java.generation"/>
       <import plugin="org.gravity.modisco"/>
       <import plugin="org.eclipse.papyrus.editor"/>
-      <import plugin="org.eclipse.emf.ecore"/>
       <import plugin="org.eclipse.uml2.types"/>
       <import plugin="carisma.modeltype.uml2"/>
       <import plugin="carisma.core"/>
@@ -130,6 +130,18 @@ Except as expressly stated in Sections 2(a) and 2(b) above, Recipient receives n
       <import feature="org.gravity.features.eclipse" version="1.0.0.201803281003"/>
       <import feature="org.gravity.features.modisco" version="1.0.0.201803281003"/>
       <import feature="feature.carisma.core" version="1.4.7.201707141720"/>
+      <import plugin="org.gravity.typegraph.basic"/>
+      <import plugin="org.gravity.tgg.modisco"/>
+      <import plugin="org.junit"/>
+      <import plugin="org.gravity.eclipse.ui"/>
+      <import plugin="org.eclipse.core.commands"/>
+      <import plugin="org.eclipse.ui.workbench"/>
+      <import plugin="org.eclipse.jface"/>
+      <import plugin="com.google.gson"/>
+      <import plugin="org.eclipse.gmf.runtime.notation"/>
+      <import plugin="org.eclipse.papyrus.infra.core"/>
+      <import plugin="org.eclipse.papyrus.uml.diagram.wizards"/>
+      <import plugin="org.eclipse.papyrus.infra.gmfdiag.style"/>
    </requires>
 
    <plugin
@@ -138,12 +150,6 @@ Except as expressly stated in Sections 2(a) and 2(b) above, Recipient receives n
          install-size="0"
          version="0.0.0"
          unpack="false"/>
-
-   <plugin
-         id="carisma.rt"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"/>
 
    <plugin
          id="carisma.rt.editor"
@@ -161,6 +167,13 @@ Except as expressly stated in Sections 2(a) and 2(b) above, Recipient receives n
 
    <plugin
          id="carisma.profile.umlsec"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="carisma.rt.models"
          download-size="0"
          install-size="0"
          version="0.0.0"
