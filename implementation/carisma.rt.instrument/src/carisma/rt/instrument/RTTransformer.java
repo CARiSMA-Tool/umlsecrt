@@ -253,6 +253,8 @@ public class RTTransformer implements ClassFileTransformer {
 		// Collect secrecy and integrity information about called method
 		before.append("java.util.List secrecySet = new java.util.ArrayList();\n")
 				.append("java.util.List integritySet = new java.util.ArrayList();\n");
+		// Temp variables to prepare eventual execution of earlyReturn
+		before.append("boolean doEarlyReturnSecrecy=false;boolean doEarlyReturnIntegrity=false;");
 		for (String s : classSecrecy) {
 			hasSecrecy = hasSecrecy || methodSignature.equals(s);
 			before.append("secrecySet.add(\"" + s + "\");\n");
@@ -296,6 +298,10 @@ public class RTTransformer implements ClassFileTransformer {
 
 		before.append("java.util.Set violations = new java.util.HashSet();\n\t");
 
+		
+		CtClass returnType = null;
+		String earlyReturnSecrecy = null;		
+		
 		// if the instrumented method has secrecy add code for checking the caller for
 		// secrecy
 		if (hasSecrecy) {
@@ -303,14 +309,13 @@ public class RTTransformer implements ClassFileTransformer {
 					.append("System.err.println(\"[SECURITY VIOLATION SECRECY] - The member ").append(methodSignature)
 					.append(" requires secrecy but the accessor \"+annot.getSignature()+\" doesn't provide secrecy.\");\n\t\t")
 					.append("violations.add(\"secrecy\");\n\t\t");
-
-			CtClass returnType = getReturnType(ctBehavior, declaringClass);
-			String earlyReturnSecrecy = RTHelper.getEarlyReturn(declaringClass, returnType,
+		returnType = getReturnType(ctBehavior, declaringClass);
+	    earlyReturnSecrecy = RTHelper.getEarlyReturn(declaringClass, returnType,
 					secrecyAnnotation.earlyReturn());
+
 			if (earlyReturnSecrecy != null) {
-				before.append("System.err.println(\"[SECURITY VIOLATION SECRECY] - early return\");\n\t\t")
-						// Add call early return;
-						.append("return ").append(earlyReturnSecrecy).append(";\n"); // TODO: move behind print
+				//If secrecy is violated, set the boolean value to trigger early return after printing.
+				before.append("doEarlyReturnSecrecy=true;");
 			}
 			before.append("}\n\t");
 		} else {
@@ -320,7 +325,7 @@ public class RTTransformer implements ClassFileTransformer {
 					.append(methodSignature)
 					.append(" doesn't provide secrecy.\"); violations.add(\"secrecy\");\n\t }\n\t");
 		}
-
+		String earlyReturnIntegrity=null;
 		if (hasIntegrity) {
 			// if the instrumented method has integrity add code for checking the caller for
 			// integrity
@@ -329,13 +334,12 @@ public class RTTransformer implements ClassFileTransformer {
 					.append(" requires integrity but the accessor \"+annot.getSignature()+\" doesn't provides integrity.\");\n\t\t");
 			before.append("violations.add(\"integrity\");\n\t\t");
 
-			CtClass returnType = getReturnType(ctBehavior, declaringClass);
-			String earlyReturnIntegrity = RTHelper.getEarlyReturn(declaringClass, returnType,
+			returnType = getReturnType(ctBehavior, declaringClass);
+			earlyReturnIntegrity = RTHelper.getEarlyReturn(declaringClass, returnType,
 					integrityAnnotation.earlyReturn());
 			if (earlyReturnIntegrity != null) {
-				before.append("System.err.println(\"[SECURITY VIOLATION INTEGRITY] - early return\");\n\t\t")
-						// Add call of early return
-						.append("return ").append(earlyReturnIntegrity).append(";\n\t"); // TODO: move behind print;
+				//If integrity is violated, set the boolean value to trigger early return after printing.
+				before.append("doEarlyReturnIntegrity=true;");
 			}
 			before.append("}\n\t");
 		} else {
@@ -349,10 +353,28 @@ public class RTTransformer implements ClassFileTransformer {
 
 		// If there were violations in the previous checks start printing
 		before.append(
-				"if(!violations.isEmpty()){\n\t\t carismaRtStack.print(violations);\n\t\t throw new java.lang.SecurityException(\"UMLsecRT: \"+violations.toString());\n\t }\n");
+				"if(!violations.isEmpty()){\n\t\t carismaRtStack.print(violations);");
+		if (earlyReturnSecrecy!=null) {
+		//Issue early return for secrecy, if necessary
+		before.append("if(doEarlyReturnSecrecy) {")
+		.append("System.err.println(\"[SECURITY VIOLATION SECRECY] - early return\");")
+		// Add call early return;
+		.append("return ").append(earlyReturnSecrecy).append(";")
+		.append("}");
+		}
+		if (earlyReturnIntegrity!=null) {
+		//Issue early return for integrity, if necessary
+		before.append("if(doEarlyReturnIntegrity) {")
+		.append("System.err.println(\"[SECURITY VIOLATION INTEGRITY] - early return\");")
+		// Add call early return;
+		.append("return ").append(earlyReturnIntegrity).append(";")
+		.append("}");
+		}
+		
+		//In case no early return has been issued, throw an exception 
+		before.append("\n\t\t throw new java.lang.SecurityException(\"UMLsecRT: \"+violations.toString());\n\t }\n");
 
 		before.append("}");
-
 //		before = new StringBuilder("int b = 0;");
 		try {
 			if (ctBehavior instanceof CtConstructor) {
