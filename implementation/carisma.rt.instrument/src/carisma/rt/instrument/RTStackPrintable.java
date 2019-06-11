@@ -48,7 +48,7 @@ public final class RTStackPrintable extends RTStack {
 		result = new JsonObject();
 		result.add("date", new JsonPrimitive(new SimpleDateFormat("yyyy-MM-dd").format(new Date())));
 		result.add("application", new JsonPrimitive(""));
-		result.add("status", new JsonPrimitive("new"));
+		result.add("Status", new JsonPrimitive("new"));
 		result.add("location", new JsonPrimitive(new File(".").getAbsolutePath()));
 		calls = new JsonArray(size());
 		result.add("calls", calls);
