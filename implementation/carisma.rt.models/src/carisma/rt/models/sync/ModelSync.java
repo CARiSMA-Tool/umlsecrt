@@ -2,7 +2,7 @@ package carisma.rt.models.sync;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Hashtable;
+import java.util.HashMap;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.uml2.uml.Element;
@@ -43,21 +43,21 @@ public class ModelSync {
 
 	public static final String UNKNOWN_CLASSIFIERS = "UMLsecRT Unknown Classifiers";
 	private Model model, unknown;
-	private Hashtable<String, Classifier> classifiers;
-	private Hashtable<RTNamedElement, NamedElement> rtToUmlMapping;
+	private HashMap<String, Classifier> classifiers;
+	private HashMap<RTNamedElement, NamedElement> rtToUmlMapping;
 
 	public ModelSync(Model model) {
 		this.model = model;
 		EList<Element> allOwnedElements = model.allOwnedElements();
 		Collection<Object> allUmlClassifiers = EcoreUtil.getObjectsByType(allOwnedElements,
 				UMLPackage.eINSTANCE.getClassifier());
-		this.classifiers = new Hashtable<String, Classifier>(allUmlClassifiers.size());
+		this.classifiers = new HashMap<String, Classifier>(allUmlClassifiers.size());
 		for (Object o : allUmlClassifiers) {
 			Classifier Classifier = (Classifier) o;
 			String signature = SignatureHelper.getQualifiedSignature(Classifier);
 			classifiers.put(signature, Classifier);
 		}
-		rtToUmlMapping = new Hashtable<RTNamedElement, NamedElement>();
+		rtToUmlMapping = new HashMap<RTNamedElement, NamedElement>();
 	}
 
 	public Model sync(RTProtocol protocol) {
@@ -66,7 +66,7 @@ public class ModelSync {
 
 		RTAccess access = protocol.getFirstAccess();
 		Lifeline rightLifeline;
-		Hashtable<Element, Lifeline> lifelines = new Hashtable<>();
+		HashMap<Element, Lifeline> lifelines = new HashMap<>();
 
 		RTMember rtMember = access.getTarget();
 		RTType rtOwner = rtMember.getOwner();
@@ -165,7 +165,7 @@ public class ModelSync {
 		return message;
 	}
 
-	private Lifeline createLifeLine(Interaction interaction, Classifier type, Hashtable<Element, Lifeline> lifelines) {
+	private Lifeline createLifeLine(Interaction interaction, Classifier type, HashMap<Element, Lifeline> lifelines) {
 		Lifeline lifeline = UMLFactory.eINSTANCE.createLifeline();
 		lifeline.setName(type.getName());
 		lifelines.put(type, lifeline);
@@ -182,7 +182,7 @@ public class ModelSync {
 
 	private void performRTMemberToMemberMapping(RTProtocol protocol) {
 		for (RTType type : protocol.getClasses()) {
-			Hashtable<String, NamedElement> memberSignatures = new Hashtable<String, NamedElement>();
+			HashMap<String, NamedElement> memberSignatures = new HashMap<String, NamedElement>();
 
 			Class classifier = (Class) rtToUmlMapping.get(type);
 			for (Operation o : classifier.getOwnedOperations()) {

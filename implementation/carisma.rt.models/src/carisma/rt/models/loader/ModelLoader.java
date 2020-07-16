@@ -31,7 +31,7 @@ public class ModelLoader {
 		}
 		Resource resource = set.getResource(URI.createFileURI(modelLocation), true);
 		try {
-			resource.load(Collections.EMPTY_MAP);
+			resource.load(Collections.emptyMap());
 		} catch (IOException e) {
 			e.printStackTrace();
 			return null;

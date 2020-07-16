@@ -22,6 +22,7 @@ import org.eclipse.ui.ISelectionService;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.handlers.HandlerUtil;
 import org.gravity.eclipse.exceptions.TransformationFailedException;
+import org.gravity.tgg.uml.GravityUmlActivator;
 import org.gravity.tgg.uml.Transformation;
 
 public class SyncHandler extends AbstractHandler {
@@ -37,9 +38,10 @@ public class SyncHandler extends AbstractHandler {
 		Job job = Job.create("UMLsecRT: Sync UML-model with code", (ICoreRunnable) monitor -> {
 			for (Object selected : structured.toArray()) {
 				if (selected instanceof IJavaProject) {
-					IJavaProject iJjavaProject = (IJavaProject) selected;
+					IJavaProject iJavaProject = (IJavaProject) selected;
 					try {
-						Transformation.umlToProject(iJjavaProject, new NullProgressMonitor());
+						Transformation transformation = GravityUmlActivator.getTransformationFactory().getTransformation(iJavaProject.getProject());
+						transformation.umlToProject(new NullProgressMonitor());
 					} catch (TransformationFailedException | IOException e) {
 						LOGGER.log(Level.ERROR, e.getMessage(), e);
 					}
@@ -63,7 +65,7 @@ public class SyncHandler extends AbstractHandler {
 		IProject iProject;
 		if (defaultVariable instanceof List<?>) {
 			List<?> list = (List<?>) defaultVariable;
-			if (list.size() == 0) {
+			if (list.isEmpty()) {
 				setBaseEnabled(false);
 				return;
 			} else if (list.size() == 1) {

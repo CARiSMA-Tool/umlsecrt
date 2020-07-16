@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.emf.common.util.URI;
@@ -49,8 +49,8 @@ import carisma.rt.models.sync.ModelSync;
 
 public class UmlVisualizationTest {
 	
-	private static Hashtable<Lifeline, Shape> lifelines = new Hashtable<>();
-	private static Hashtable<Message, Integer> messagePositions = new Hashtable<>();
+	private static HashMap<Lifeline, Shape> lifelines = new HashMap<>();
+	private static HashMap<Message, Integer> messagePositions = new HashMap<>();
 
 	public static void main(String[] args) {
 		ResourceSet set = new ResourceSetImpl();
@@ -66,7 +66,7 @@ public class UmlVisualizationTest {
 
 		Resource umlResource = set.getResource(URI.createFileURI(umlPath), true);
 		try {
-			umlResource.load(Collections.EMPTY_MAP);
+			umlResource.load(Collections.emptyMap());
 		} catch (IOException e) {
 			return;
 		}
@@ -94,7 +94,7 @@ public class UmlVisualizationTest {
 			URI notationURI = URI.createFileURI(notationPath);
 			if (new File(notationPath).exists()) {
 				notationResource = set.getResource(notationURI, true);
-				notationResource.load(Collections.EMPTY_MAP);
+				notationResource.load(Collections.emptyMap());
 			} else {
 				notationResource = set.createResource(notationURI);
 			}
@@ -102,7 +102,7 @@ public class UmlVisualizationTest {
 			URI diURI = URI.createFileURI(diPath);
 			if (new File(diPath).exists()) {
 				diResource = set.getResource(diURI, true);
-				diResource.load(Collections.EMPTY_MAP);
+				diResource.load(Collections.emptyMap());
 			} else {
 				diResource = set.createResource(diURI);
 			}
@@ -160,8 +160,8 @@ public class UmlVisualizationTest {
 		}
 				
 		try {
-			notationResource.save(Collections.EMPTY_MAP);
-			diResource.save(Collections.EMPTY_MAP);
+			notationResource.save(Collections.emptyMap());
+			diResource.save(Collections.emptyMap());
 		} catch (IOException e) {
 
 		}

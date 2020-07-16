@@ -1,20 +1,25 @@
 package carisma.rt.instrument;
 
 import java.lang.annotation.Annotation;
+import java.util.List;
 
 import org.gravity.security.annotations.requirements.High;
 import org.gravity.security.annotations.requirements.Integrity;
 import org.gravity.security.annotations.requirements.Secrecy;
 
-import javassist.CtBehavior;
 import javassist.CtClass;
 import javassist.CtConstructor;
 import javassist.CtField;
 import javassist.CtMember;
 import javassist.CtMethod;
 import javassist.NotFoundException;
+import javassist.expr.FieldAccess;
 
 public class RTHelper {
+	
+	private RTHelper() {
+		// This class shouldn't be instantiated
+	}
 
 	/**
 	 * Creates an early return string which can be inserted into the instrumented
@@ -25,7 +30,7 @@ public class RTHelper {
 	 *                       needed
 	 * @return An early return string
 	 */
-	static String getEarlyReturn(CtMember member, Class<? extends Annotation> annotationType)
+	static String getEarlyReturn(CtMember member, CtClass owner, Class<? extends Annotation> annotationType)
 			throws ClassNotFoundException, NotFoundException {
 		String earlyReturn;
 		Object annotation = member.getAnnotation(annotationType);
@@ -38,7 +43,6 @@ public class RTHelper {
 		} else {
 			return null;
 		}
-		CtClass owner = member.getDeclaringClass();
 		CtClass type;
 		if (member instanceof CtConstructor) {
 			type = owner;
@@ -65,14 +69,14 @@ public class RTHelper {
 	static String getEarlyReturn(CtClass owner, CtClass type, String earlyReturn) {
 		if (earlyReturn == null || earlyReturn.length() == 0) {
 			return null;
-		} else if ("null".equals(earlyReturn.toLowerCase())) {
+		} else if ("null".equalsIgnoreCase(earlyReturn)) {
 			return "null";
 		} else {
-			if ("void".equals(earlyReturn.toLowerCase())) {
+			if ("void".equalsIgnoreCase(earlyReturn)) {
 				return "";
-			} else if ("true".equals(earlyReturn.toLowerCase())) {
+			} else if ("true".equalsIgnoreCase(earlyReturn)) {
 				return Boolean.toString(true);
-			} else if ("false".equals(earlyReturn.toLowerCase())) {
+			} else if ("false".equalsIgnoreCase(earlyReturn)) {
 				return Boolean.toString(false);
 			} else if ('"' == earlyReturn.charAt(0) && earlyReturn.charAt(earlyReturn.length() - 1) == '"') {
 				return earlyReturn;
@@ -80,10 +84,10 @@ public class RTHelper {
 				CtMethod method;
 				try {
 					method = owner.getDeclaredMethod(earlyReturn);
-					if (method != null && method.getParameterTypes().length == 0) {
-						if (method.getReturnType().equals(type)) {
-							return method.getName() + "()";
-						}
+					if (method != null && method.getParameterTypes().length == 0
+							&& method.getReturnType().equals(type)) {
+						return method.getName() + "()";
+
 					}
 				} catch (NotFoundException e) {
 					e.printStackTrace();
@@ -115,7 +119,7 @@ public class RTHelper {
 		signature.append('.');
 		signature.append(field.getName());
 		try {
-			signature.append('.');
+			signature.append(':');
 			signature.append(field.getType().getSimpleName());
 		} catch (NotFoundException e) {
 			printAgentError(e);
@@ -123,14 +127,56 @@ public class RTHelper {
 		return signature.toString();
 	}
 
+	public static String getFieldSignature(FieldAccess access) {
+		StringBuilder signature = new StringBuilder(access.getClassName()).append('.').append(access.getFieldName())
+				.append(':');
+		String type = access.getSignature();
+		if (type.charAt(type.length() - 1) == ';') {
+			type = type.substring(0, type.length() - 1);
+		}
+		char firstChar = type.charAt(0);
+		if (type.length() == 1) {
+			return appendPrimitiveType(signature, firstChar).toString();
+		}
+		String substring = type.substring(1);
+		if ('L' == firstChar) {
+			return signature.append(substring.replace('/', '.')).toString();
+		}
+		if ('[' == firstChar) {
+			if (substring.length() == 1) {
+				return appendPrimitiveType(signature, substring.charAt(0)).append("[]").toString();
+			}
+			return signature.append(substring).append("[]").toString();
+		}
+		throw new IllegalStateException("Unknown type String: " + type);
+	}
+
 	/**
-	 * Builds the signature of a behavior
-	 * 
-	 * @param behavior The behavior
-	 * @return The behaviors signature
+	 * @param signature
+	 * @param firstChar
+	 * @return
 	 */
-	public static String getSignature(CtBehavior behavior) {
-		return behavior.getLongName();
+	private static StringBuilder appendPrimitiveType(StringBuilder signature, char firstChar) {
+		switch (firstChar) {
+		case 'Z':
+			return signature.append("boolean");
+		case 'B':
+			return signature.append("byte");
+		case 'C':
+			return signature.append("char");
+		case 'S':
+			return signature.append("short");
+		case 'I':
+			return signature.append("int");
+		case 'J':
+			return signature.append("long");
+		case 'F':
+			return signature.append("float");
+		case 'D':
+			return signature.append("double");
+		default:
+			throw new IllegalStateException("Unknown primitive type: " + firstChar);
+		}
 	}
 
 	/**
@@ -139,10 +185,13 @@ public class RTHelper {
 	 * @param error The thrown exception
 	 */
 	public static void printAgentError(Exception error) {
-		final StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-		String location = "";
-		if (stackTrace.length > 1) {
-			location = stackTrace[1].toString();
+		String location = "Couldn't get location";
+		Thread currentThread = Thread.currentThread();
+		if (currentThread != null) {
+			final StackTraceElement[] stackTrace = currentThread.getStackTrace();
+			if (stackTrace.length > 1) {
+				location = stackTrace[1].toString();
+			}
 		}
 		printAgentError(error, location);
 	}
@@ -153,11 +202,33 @@ public class RTHelper {
 	 * @param error The thrown exception
 	 */
 	public static void printAgentError(Exception error, String location) {
-		System.out.println("[AGENT] ERROR (" + error.getClass().getSimpleName() + " at \"" + location + "\"): "
-				+ error.getLocalizedMessage());
-		for (StackTraceElement s : error.getStackTrace()) {
-			System.out.println("[AGENT] \t " + s.toString());
+		if (error != null) {
+			System.out.println("[AGENT] ERROR (" + error.getClass().getSimpleName() + " at \"" + location + "\"): "
+					+ error.getLocalizedMessage());
+			for (StackTraceElement s : error.getStackTrace()) {
+				System.out.println("[AGENT] \t " + s.toString());
+			}
+		} else {
+			System.out.println("[AGENT] \t Unknown Error at \"" + location + "\n");
 		}
+	}
+
+	static boolean containsSignature(String fieldSignature, String[] values) {
+		for (int i = 0; i < values.length; i++) {
+			if (fieldSignature.endsWith(values[i])) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	static boolean containsSignature(String fieldSignature, List<String> values) {
+		for (int i = 0; i < values.size(); i++) {
+				if (fieldSignature.endsWith(values.get(i))) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 }

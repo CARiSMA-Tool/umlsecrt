@@ -1,22 +1,19 @@
 package carisma.rt.instrument;
 
-import java.util.Collection;
-import java.util.Collections;
-
 public final class RTAnnotation {
 
 	private final String signature;
-	private final Collection<String> secrecy;
-	private final Collection<String> integrity;
+	private final String[] secrecy;
+	private final String[] integrity;
 	private final Class<?> clazz;
 	long ownId = -1;
 	long prevId = -1;
 
-	public RTAnnotation(String signature, Class<?> clazz, Collection<String> secrecy, Collection<String> integrity) {
+	public RTAnnotation(String signature, Class<?> clazz, String[] secrecy, String[] integrity) {
 		this.signature = signature;
 		this.clazz = clazz;
-		this.secrecy = Collections.unmodifiableCollection(secrecy);
-		this.integrity = Collections.unmodifiableCollection(integrity);
+		this.secrecy = secrecy;
+		this.integrity = integrity;
 	}
 
 	public String getSignature() {
@@ -28,11 +25,21 @@ public final class RTAnnotation {
 	}
 
 	public boolean hasSecrecy(String signature) {
-		return secrecy.contains(signature);
+		for (String s : secrecy) {
+			if (signature.endsWith(s)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public boolean hasIntegrity(String signature) {
-		return integrity.contains(signature);
+		for (String s : integrity) {
+			if (signature.endsWith(s)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Override

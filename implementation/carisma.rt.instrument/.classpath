@@ -2,8 +2,9 @@
 <classpath>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/java-8-oracle"/>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="lib" path="lib/javassist.jar"/>
+	<classpathentry kind="lib" path="lib/javassist.jar" sourcepath="/home/speldszus/Downloads/javassist-rel_3_27_0_ga.zip"/>
 	<classpathentry kind="lib" path="lib/org.gravity.annotations.jar"/>
 	<classpathentry kind="lib" path="lib/gson-2.8.5.jar"/>
+	<classpathentry kind="lib" path="missingLibs/rhino.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

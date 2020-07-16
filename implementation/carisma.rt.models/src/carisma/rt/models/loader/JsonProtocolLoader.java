@@ -43,7 +43,7 @@ public class JsonProtocolLoader implements IProtocolLoader {
 		Resource resource = set.createResource(
 				URI.createFileURI("UmlsecRT-" + rtProtocol.getProgram() + "-" + rtProtocol.getDate() + ".xmi"));
 		resource.getContents().add(rtProtocol);
-		resource.save(Collections.EMPTY_MAP);
+		resource.save(Collections.emptyMap());
 		return rtProtocol;
 	}
 }

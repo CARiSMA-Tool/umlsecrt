@@ -43,7 +43,7 @@ public class JsonProtocolLoaderTest {
 	@Test
 	public void testLoadRTProtocol() throws IOException {
 		RTProtocol protocol = new JsonProtocolLoader().loadRTProtocol(input);
-		protocol.eResource().save(new FileOutputStream(new File(OUT, input.getName().replaceAll("\\.json", ".xmi"))), Collections.EMPTY_MAP);
+		protocol.eResource().save(new FileOutputStream(new File(OUT, input.getName().replaceAll("\\.json", ".xmi"))), Collections.emptyMap());
 		assertNotNull(protocol);
 	}
 

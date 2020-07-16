@@ -14,7 +14,8 @@ Require-Bundle: org.eclipse.jdt.core,
  org.gravity.tgg.modisco.uml,
  org.eclipse.uml2.uml,
  org.eclipse.modisco.infra.discovery.core,
- org.moflon.tgg.language,
  org.eclipse.e4.core.commands,
  org.eclipse.core.expressions,
  org.gravity.eclipse
+Export-Package: carisma.rt.editor,
+ carisma.rt.editor.uml

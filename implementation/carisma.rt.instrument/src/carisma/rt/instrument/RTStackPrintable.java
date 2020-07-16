@@ -7,8 +7,9 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
-import java.util.Set;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -30,7 +31,7 @@ public final class RTStackPrintable extends RTStack {
 	private JsonObject result;
 
 	@Override
-	public RTAnnotation push(RTAnnotation item) {
+	public void push(RTAnnotation item) {
 		item.ownId = id++; // TODO: Remove print and measure
 		if (!isEmpty()) {
 			item.prevId = peek().ownId;
@@ -39,16 +40,20 @@ public final class RTStackPrintable extends RTStack {
 			addCall(item);
 			write(); // TODO: find a way to append
 		}
-		return super.push(item);
+		super.push(item);
+	}
+	
+	@Override
+	public void print(String violation) {
+		super.print(Collections.singleton(violation));
 	}
 
 	@Override
-	public void print(Set<String> violations) {
+	public void print(Collection<String> violations) {
 		trace = TRACE;
 		result = new JsonObject();
 		result.add("date", new JsonPrimitive(new SimpleDateFormat("yyyy-MM-dd").format(new Date())));
 		result.add("application", new JsonPrimitive(""));
-		result.add("Status", new JsonPrimitive("new"));
 		result.add("location", new JsonPrimitive(new File(".").getAbsolutePath()));
 		calls = new JsonArray(size());
 		result.add("calls", calls);
