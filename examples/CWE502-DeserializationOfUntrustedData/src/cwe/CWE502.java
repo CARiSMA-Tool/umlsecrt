@@ -10,10 +10,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.gravity.security.annotations.requirements.Integrity;
 import org.gravity.security.annotations.requirements.Secrecy;
 
 public class CWE502 {
 
+	@Secrecy@Integrity
+	private static String secret = "SECRET";
+	
+	
 	private static final Path evilObjFileSrc = Paths.get("evil/evil.obj");
 	private static final Path evilClassFileSrc = Paths.get("evil/evil/EvilSerializeableClass.class");
 
@@ -77,6 +82,16 @@ public class CWE502 {
 
 	@Secrecy
 	public void secret() {
-		System.out.println("SECRET");
+		SecurityManager sm = System.getSecurityManager();
+		if(sm!=null) {
+			sm.checkPermission(new RuntimePermission("secret"));
+		}
+		System.out.println(secret);	
+	}
+	
+	@Integrity
+	public void setSecret(String secret) {
+		this.secret = secret;
+		System.out.println("Changed secret to: "+this.secret);
 	}
 }
