@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="ASCII"?>
+<notation:Diagram xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:notation="http://www.eclipse.org/gmf/runtime/1.0.2/notation" xmlns:style="http://www.eclipse.org/papyrus/infra/gmfdiag/style" type="PapyrusUMLSequenceDiagram" name="UMLsecRT Security Violation: 2018-07-31_13-30" measurementUnit="Pixel">
+  <children xsi:type="notation:Shape" type="Interaction_Shape">
+    <children xsi:type="notation:DecorationNode" type="Interaction_NameLabel"/>
+    <children xsi:type="notation:BasicCompartment" type="Interaction_SubfragmentCompartment">
+      <children xsi:type="notation:Shape" type="Lifeline_Shape">
+        <children xsi:type="notation:DecorationNode" type="Lifeline_NameLabel"/>
+        <element href="Classloader-changed.uml#_LUWbgZl1EeiRKffl9tyf2A"/>
+        <layoutConstraint xsi:type="notation:Bounds" x="50" y="10" width="100" height="410"/>
+      </children>
+      <children xsi:type="notation:Shape" type="Lifeline_Shape">
+        <children xsi:type="notation:DecorationNode" type="Lifeline_NameLabel"/>
+        <element href="Classloader-changed.uml#_LUj24Zl1EeiRKffl9tyf2A"/>
+        <layoutConstraint xsi:type="notation:Bounds" x="250" y="170" width="100" height="240"/>
+      </children>
+      <children xsi:type="notation:Shape" type="Lifeline_Shape">
+        <children xsi:type="notation:DecorationNode" type="Lifeline_NameLabel"/>
+        <children xsi:type="notation:Shape" type="BehaviorExecutionSpecification_Shape">
+          <children xsi:type="notation:DecorationNode" type="BehaviorExecutionSpecification_Behavior">
+            <layoutConstraint xsi:type="notation:Location" x="18" y="18"/>
+          </children>
+          <element href="Classloader-changed.uml#_LUwEIJl1EeiRKffl9tyf2A"/>
+          <layoutConstraint xsi:type="notation:Bounds" x="40" y="265" width="20" height="100"/>
+        </children>
+        <element href="Classloader-changed.uml#_LUpWcZl1EeiRKffl9tyf2A"/>
+        <layoutConstraint xsi:type="notation:Bounds" x="450" y="10" width="100" height="410"/>
+      </children>
+      <layoutConstraint xsi:type="notation:Bounds"/>
+    </children>
+    <element href="Classloader-changed.uml#_LUTYMJl1EeiRKffl9tyf2A"/>
+    <layoutConstraint xsi:type="notation:Bounds"/>
+  </children>
+  <styles xsi:type="notation:StringValueStyle" name="diagram_compatibility_version" stringValue="1.4.0"/>
+  <styles xsi:type="notation:DiagramStyle"/>
+  <styles xsi:type="style:PapyrusDiagramStyle" diagramKindId="org.eclipse.papyrus.uml.diagram.sequence">
+    <owner href="Classloader-changed.uml#_LUTYMJl1EeiRKffl9tyf2A"/>
+  </styles>
+  <element href="Classloader-changed.uml#_LUTYMJl1EeiRKffl9tyf2A"/>
+  <edges xsi:type="notation:Connector" type="Message_FoundEdge" source="//@children.0" target="//@children.0/@children.1/@children.0">
+    <children xsi:type="notation:DecorationNode" type="Message_FoundNameLabel">
+      <layoutConstraint xsi:type="notation:Location" x="1" y="-13"/>
+    </children>
+    <children xsi:type="notation:DecorationNode" type="Message_FoundStereotypeLabel">
+      <layoutConstraint xsi:type="notation:Location" x="1" y="-33"/>
+    </children>
+    <styles xsi:type="notation:FontStyle"/>
+    <styles xsi:type="notation:LineStyle"/>
+    <element href="Classloader-changed.uml#_LUbUAJl1EeiRKffl9tyf2A"/>
+    <bendpoints xsi:type="notation:RelativeBendpoints" points="[0, 0, -320, 0]$[0, 0, 320, 0]"/>
+    <sourceAnchor xsi:type="notation:IdentityAnchor" id="(10,100)"/>
+    <targetAnchor xsi:type="notation:IdentityAnchor" id="(0.5,0.14634146341463414)"/>
+  </edges>
+  <edges xsi:type="notation:Connector" type="Message_CreateEdge" source="//@children.0/@children.1/@children.0" target="//@children.0/@children.1/@children.1">
+    <children xsi:type="notation:DecorationNode" type="Message_CreateNameLabel">
+      <layoutConstraint xsi:type="notation:Location" x="1" y="-13"/>
+    </children>
+    <children xsi:type="notation:DecorationNode" type="Message_CreateStereotypeLabel">
+      <layoutConstraint xsi:type="notation:Location" x="1" y="-33"/>
+    </children>
+    <styles xsi:type="notation:FontStyle"/>
+    <styles xsi:type="notation:LineStyle"/>
+    <element href="Classloader-changed.uml#_LUm6MJl1EeiRKffl9tyf2A"/>
+    <bendpoints xsi:type="notation:RelativeBendpoints" points="[0, 0, -320, 0]$[0, 0, 320, 0]"/>
+    <sourceAnchor xsi:type="notation:IdentityAnchor" id="(0.5,0.3902439024390244)"/>
+    <targetAnchor xsi:type="notation:IdentityAnchor" id="(0.5,0.0)"/>
+  </edges>
+  <edges xsi:type="notation:Connector" type="Message_SynchEdge" source="//@children.0/@children.1/@children.1" target="//@children.0/@children.1/@children.2">
+    <children xsi:type="notation:DecorationNode" type="Message_SynchNameLabel">
+      <layoutConstraint xsi:type="notation:Location" x="1" y="-13"/>
+    </children>
+    <children xsi:type="notation:DecorationNode" type="Message_SynchStereotypeLabel">
+      <layoutConstraint xsi:type="notation:Location" x="1" y="-33"/>
+    </children>
+    <styles xsi:type="notation:FontStyle"/>
+    <styles xsi:type="notation:LineStyle"/>
+    <element href="Classloader-changed.uml#_LUrysZl1EeiRKffl9tyf2A"/>
+    <bendpoints xsi:type="notation:RelativeBendpoints" points="[0, 0, -320, 0]$[0, 0, 320, 0]"/>
+    <sourceAnchor xsi:type="notation:IdentityAnchor" id="(0.5,0.4166666666666667)"/>
+    <targetAnchor xsi:type="notation:IdentityAnchor" id="(0.5,0.6341463414634146)"/>
+  </edges>
+  <edges xsi:type="notation:Connector" type="Message_ReplyEdge" source="//@children.0/@children.1/@children.2" target="//@children.0/@children.1/@children.1">
+    <children xsi:type="notation:DecorationNode" type="Message_ReplyNameLabel">
+      <layoutConstraint xsi:type="notation:Location" x="1" y="-13"/>
+    </children>
+    <children xsi:type="notation:DecorationNode" type="Message_ReplyStereotypeLabel">
+      <layoutConstraint xsi:type="notation:Location" x="1" y="-33"/>
+    </children>
+    <styles xsi:type="notation:FontStyle"/>
+    <styles xsi:type="notation:LineStyle"/>
+    <element href="Classloader-changed.uml#_LUtA0Jl1EeiRKffl9tyf2A"/>
+    <bendpoints xsi:type="notation:RelativeBendpoints" points="[0, 0, -320, 0]$[0, 0, 320, 0]"/>
+    <sourceAnchor xsi:type="notation:IdentityAnchor" id="(0.5,0.8780487804878049)"/>
+    <targetAnchor xsi:type="notation:IdentityAnchor" id="(0.5,0.8333333333333334)"/>
+  </edges>
+</notation:Diagram>

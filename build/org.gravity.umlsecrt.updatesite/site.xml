@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <feature url="features/org.gravity.umlsecrt.feature_1.0.0.qualifier.jar" id="org.gravity.umlsecrt.feature" version="1.0.0.qualifier">
+      <category name="umlsec.rt"/>
+   </feature>
+   <category-def name="umlsec.rt" label="UMLsecRT"/>
+</site>

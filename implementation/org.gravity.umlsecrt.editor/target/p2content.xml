@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<units size='1'>
+  <unit id='org.gravity.umlsecrt.editor' version='1.0.0.202105112013' generation='2'>
+    <update id='org.gravity.umlsecrt.editor' range='[0.0.0,1.0.0.202105112013)' severity='0'/>
+    <properties size='4'>
+      <property name='org.eclipse.equinox.p2.name' value='CARiSMA RT Editor'/>
+      <property name='maven-groupId' value='org.gravity.umlsecrt'/>
+      <property name='maven-artifactId' value='org.gravity.umlsecrt.editor'/>
+      <property name='maven-version' value='1.0.0-SNAPSHOT'/>
+    </properties>
+    <provides size='6'>
+      <provided namespace='org.eclipse.equinox.p2.iu' name='org.gravity.umlsecrt.editor' version='1.0.0.202105112013'/>
+      <provided namespace='osgi.bundle' name='org.gravity.umlsecrt.editor' version='1.0.0.202105112013'/>
+      <provided namespace='java.package' name='carisma.rt.editor' version='0.0.0'/>
+      <provided namespace='java.package' name='carisma.rt.editor.uml' version='0.0.0'/>
+      <provided namespace='osgi.identity' name='org.gravity.umlsecrt.editor' version='1.0.0.202105112013'>
+        <properties size='1'>
+          <property name='type' value='osgi.bundle'/>
+        </properties>
+      </provided>
+      <provided namespace='org.eclipse.equinox.p2.eclipse.type' name='bundle' version='1.0.0'/>
+    </provides>
+    <requires size='13'>
+      <required namespace='osgi.bundle' name='org.eclipse.jdt.core' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.eclipse.core.resources' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.eclipse.core.runtime' range='3.13.0'/>
+      <required namespace='osgi.bundle' name='org.gravity.security.annotations' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.eclipse.ui' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.gravity.tgg.modisco.uml' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.eclipse.uml2.uml' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.eclipse.modisco.infra.discovery.core' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.eclipse.e4.core.commands' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.eclipse.core.expressions' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.gravity.eclipse' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.apache.log4j' range='0.0.0'/>
+      <requiredProperties namespace='osgi.ee' match='(&amp;(osgi.ee=JavaSE)(version=1.8))'>
+        <description>
+          org.gravity.umlsecrt.editor
+        </description>
+      </requiredProperties>
+    </requires>
+    <artifacts size='1'>
+      <artifact classifier='osgi.bundle' id='org.gravity.umlsecrt.editor' version='1.0.0.202105112013'/>
+    </artifacts>
+    <touchpoint id='org.eclipse.equinox.p2.osgi' version='1.0.0'/>
+    <touchpointData size='1'>
+      <instructions size='1'>
+        <instruction key='manifest'>
+          Bundle-SymbolicName: org.gravity.umlsecrt.editor;singleton:=true&#xA;Bundle-Version: 1.0.0.202105112013&#xA;
+        </instruction>
+      </instructions>
+    </touchpointData>
+  </unit>
+</units>

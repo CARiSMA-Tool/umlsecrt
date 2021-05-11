@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.gravity.umlsecrt</groupId>
+  <artifactId>umlsecrt</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  <modules>
+    <module>implementation/org.gravity.umlsecrt.agent</module>
+    <module>implementation/org.gravity.umlsecrt.editor</module>
+    <module>implementation/org.gravity.umlsecrt.adapt</module>
+    <module>implementation/org.gravity.uml.papyrus</module>
+    <module>build/org.gravity.umlsecrt.feature</module>
+    <module>build/org.gravity.umlsecrt.updatesite</module>
+  </modules>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.eclipse.tycho</groupId>
+        <artifactId>tycho-maven-plugin</artifactId>
+        <version>2.3.0</version>
+        <extensions>true</extensions>
+      </plugin>
+    </plugins>
+  </build>
+  <repositories>
+    <repository>
+      <id>Eclipse Latest</id>
+      <layout>p2</layout>
+      <url>https://download.eclipse.org/releases/latest</url>
+    </repository>
+    <repository>
+      <id>eMoflon TIE</id>
+      <layout>p2</layout>
+      <url>https://gravity-tool.org/emoflon-tie/updatesite</url>
+    </repository>
+    <repository>
+      <id>Henshin</id>
+      <layout>p2</layout>
+      <url>https://download.eclipse.org/modeling/emft/henshin/updates/nightly</url>
+    </repository>
+    <repository>
+      <id>plantuml</id>
+      <layout>p2</layout>
+      <url>https://hallvard.github.io/plantuml</url>
+    </repository>
+    <repository>
+      <id>CARiSMA</id>
+      <layout>p2</layout>
+      <url>http://carisma.umlsec.de/beta-updatesite</url>
+    </repository>
+  </repositories>
+</project>

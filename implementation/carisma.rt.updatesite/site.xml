@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<site>
-   <feature url="features/carisma.rt.feature_1.0.0.201804301822.jar" id="carisma.rt.feature" version="1.0.0.201804301822">
-      <category name="umlsec.rt"/>
-   </feature>
-   <category-def name="umlsec.rt" label="UMLsecRT"/>
-</site>

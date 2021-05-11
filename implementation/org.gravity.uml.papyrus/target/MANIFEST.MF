@@ -1,0 +1,13 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: GRaViTY UML Papyrus
+Bundle-SymbolicName: org.gravity.uml.papyrus;singleton:=true
+Bundle-Version: 1.0.0.202105112013
+Bundle-Activator: org.gravity.uml.papyrus.Activator
+Bundle-Vendor: RGSE - University of Koblenz-Landau
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Automatic-Module-Name: org.gravity.uml.papyrus
+Bundle-ActivationPolicy: lazy
+Require-Bundle: org.eclipse.osgi,org.eclipse.emf.transaction,org.eclipse
+ .uml2.uml,org.gravity.tgg.modisco.uml,org.gravity.eclipse
+

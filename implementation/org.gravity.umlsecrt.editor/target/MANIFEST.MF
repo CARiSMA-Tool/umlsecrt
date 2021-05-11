@@ -1,0 +1,15 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: CARiSMA RT Editor
+Bundle-SymbolicName: org.gravity.umlsecrt.editor;singleton:=true
+Bundle-Version: 1.0.0.202105112013
+Automatic-Module-Name: carisma.rt.editor
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Bundle-ActivationPolicy: lazy
+Require-Bundle: org.eclipse.jdt.core,org.eclipse.core.resources,org.ecli
+ pse.core.runtime;bundle-version="3.13.0",org.gravity.security.annotatio
+ ns,org.eclipse.ui,org.gravity.tgg.modisco.uml,org.eclipse.uml2.uml,org.
+ eclipse.modisco.infra.discovery.core,org.eclipse.e4.core.commands,org.e
+ clipse.core.expressions,org.gravity.eclipse,org.apache.log4j
+Export-Package: carisma.rt.editor,carisma.rt.editor.uml
+
