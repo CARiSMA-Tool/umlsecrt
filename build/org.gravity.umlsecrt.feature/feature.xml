@@ -96,29 +96,28 @@ Except as expressly stated in Sections 2(a) and 2(b) above, Recipient receives n
       <import plugin="org.eclipse.jdt.core"/>
       <import plugin="org.eclipse.core.resources"/>
       <import plugin="org.eclipse.core.runtime" version="3.13.0" match="greaterOrEqual"/>
+      <import plugin="org.gravity.security.annotations"/>
       <import plugin="org.eclipse.ui"/>
+      <import plugin="org.gravity.tgg.modisco.uml"/>
       <import plugin="org.eclipse.uml2.uml"/>
       <import plugin="org.eclipse.modisco.infra.discovery.core"/>
       <import plugin="org.eclipse.e4.core.commands"/>
       <import plugin="org.eclipse.core.expressions"/>
       <import plugin="org.gravity.eclipse"/>
-      <import plugin="org.eclipse.emf.ecore"/>
+      <import plugin="org.apache.log4j"/>
       <import plugin="com.google.gson"/>
       <import plugin="org.junit"/>
+      <import plugin="carisma.profile.umlsec"/>
       <import plugin="org.eclipse.gmf.runtime.notation"/>
-      <import plugin="org.eclipse.papyrus.infra.core"/>
-      <import plugin="org.eclipse.papyrus.uml.diagram.wizards"/>
-      <import plugin="org.eclipse.papyrus.infra.gmfdiag.style"/>
       <import feature="org.moflon.core.feature" version="1.2.0.201804102216"/>
       <import feature="org.moflon.tgg.mosl.feature" version="3.0.0.201804101444"/>
       <import feature="feature.carisma.uml2" version="1.1.8.201707141720"/>
       <import feature="org.gravity.features.eclipse" version="1.0.0.201803281003"/>
       <import feature="org.gravity.features.modisco" version="1.0.0.201803281003"/>
       <import feature="feature.carisma.core" version="1.4.7.201707141720"/>
-      <import plugin="org.gravity.security.annotations"/>
-      <import plugin="org.gravity.tgg.modisco.uml"/>
-      <import plugin="org.apache.log4j"/>
-      <import plugin="carisma.profile.umlsec"/>
+      <import plugin="org.eclipse.papyrus.infra.gmfdiag.style"/>
+      <import feature="org.eclipse.papyrus.infra.gmfdiag.feature" version="3.0.0.202103101059"/>
+      <import feature="org.eclipse.papyrus.editor.feature" version="2.0.0.202103101059"/>
    </requires>
 
    <plugin

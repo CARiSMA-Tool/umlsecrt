@@ -48,30 +48,30 @@ import org.eclipse.uml2.uml.resource.UMLResource;
 import carisma.rt.models.sync.ModelSync;
 
 public class UmlVisualizationTest {
-	
+
 	private static HashMap<Lifeline, Shape> lifelines = new HashMap<>();
 	private static HashMap<Message, Integer> messagePositions = new HashMap<>();
 
-	public static void main(String[] args) {
-		ResourceSet set = new ResourceSetImpl();
-		Registry packages = set.getPackageRegistry();
+	public static void main(final String[] args) {
+		final ResourceSet set = new ResourceSetImpl();
+		final Registry packages = set.getPackageRegistry();
 		packages.put(UMLPackage.eNS_URI, UMLPackage.eINSTANCE);
 		packages.put(NotationPackage.eNS_URI, NotationPackage.eINSTANCE);
 		packages.put(StylePackage.eNS_URI, StylePackage.eINSTANCE);
-		Map<String, Object> factories = set.getResourceFactoryRegistry().getExtensionToFactoryMap();
+		final Map<String, Object> factories = set.getResourceFactoryRegistry().getExtensionToFactoryMap();
 		factories.put(UMLResource.FILE_EXTENSION, UMLResource.Factory.INSTANCE);
 		factories.put(Resource.Factory.Registry.DEFAULT_EXTENSION, new XMIResourceFactoryImpl());
 
-		String umlPath = new File("protocols/Classloader-changed.uml").getAbsolutePath();
+		final String umlPath = new File("protocols/Classloader-changed.uml").getAbsolutePath();
 
-		Resource umlResource = set.getResource(URI.createFileURI(umlPath), true);
+		final Resource umlResource = set.getResource(URI.createFileURI(umlPath), true);
 		try {
 			umlResource.load(Collections.emptyMap());
-		} catch (IOException e) {
+		} catch (final IOException e) {
 			return;
 		}
-		Model model = (Model) umlResource.getContents().get(0);
-		Interaction interaction = (Interaction) EcoreUtil.getObjectByType(
+		final Model model = (Model) umlResource.getContents().get(0);
+		final Interaction interaction = (Interaction) EcoreUtil.getObjectByType(
 				((Model) model.getPackagedElement(ModelSync.UNKNOWN_CLASSIFIERS)).getPackagedElements(),
 				UMLPackage.eINSTANCE.getInteraction());
 
@@ -79,19 +79,19 @@ public class UmlVisualizationTest {
 
 	}
 
-	private static void drawSequenceDiagram(Interaction interaction) {
-		Resource umlResource = interaction.eResource();
-		ResourceSet set = umlResource.getResourceSet();
+	private static void drawSequenceDiagram(final Interaction interaction) {
+		final Resource umlResource = interaction.eResource();
+		final ResourceSet set = umlResource.getResourceSet();
 
-		String umlURI = umlResource.getURI().toFileString();
+		final String umlURI = umlResource.getURI().toFileString();
 
-		String notationPath = umlURI.substring(0, umlURI.length() - 3) + "notation";
-		String diPath = umlURI.substring(0, umlURI.length() - 3) + "di";
+		final String notationPath = umlURI.substring(0, umlURI.length() - 3) + "notation";
+		final String diPath = umlURI.substring(0, umlURI.length() - 3) + "di";
 
 		Resource notationResource;
 		Resource diResource;
 		try {
-			URI notationURI = URI.createFileURI(notationPath);
+			final URI notationURI = URI.createFileURI(notationPath);
 			if (new File(notationPath).exists()) {
 				notationResource = set.getResource(notationURI, true);
 				notationResource.load(Collections.emptyMap());
@@ -99,77 +99,78 @@ public class UmlVisualizationTest {
 				notationResource = set.createResource(notationURI);
 			}
 
-			URI diURI = URI.createFileURI(diPath);
+			final URI diURI = URI.createFileURI(diPath);
 			if (new File(diPath).exists()) {
 				diResource = set.getResource(diURI, true);
 				diResource.load(Collections.emptyMap());
 			} else {
 				diResource = set.createResource(diURI);
 			}
-		} catch (IOException e) {
+		} catch (final IOException e) {
 			return;
 		}
-		
-		Shape interactionShape = drawInteraction(interaction, notationResource);
-		
-		int x = 50, y = 10;
-		int height = 10 + interaction.getMessages().size()*100;
-		for(Lifeline lifeline : interaction.getLifelines()) {
+
+		final Shape interactionShape = drawInteraction(interaction, notationResource);
+
+		int x = 50;
+		final int y = 10;
+		final int height = 10 + (interaction.getMessages().size()*100);
+		for(final Lifeline lifeline : interaction.getLifelines()) {
 			drawLifeline(interactionShape, x, y, height, lifeline);
 			x += 200;
 		}
-	
-		int counter = 0;
-		for(Message message : interaction.getMessages()) {
 
-			int absolutePos = 70+100*counter;
-			
+		int counter = 0;
+		for(final Message message : interaction.getMessages()) {
+
+			final int absolutePos = 70+(100*counter);
+
 			messagePositions.put(message, absolutePos);
-			
+
 			drawMessage(interactionShape, absolutePos, message);
-			
+
 			counter++;
 		}
-		
-		for(InteractionFragment fragment : interaction.getFragments()) {
+
+		for(final InteractionFragment fragment : interaction.getFragments()) {
 			if (fragment instanceof BehaviorExecutionSpecification) {
-				BehaviorExecutionSpecification behavior = (BehaviorExecutionSpecification) fragment;
-				Shape lifelineShape = lifelines.get(behavior.getCovereds().get(0));
-				
-				Shape behaviorShape = (Shape) lifelineShape.createChild(NotationPackage.eINSTANCE.getShape());
+				final BehaviorExecutionSpecification behavior = (BehaviorExecutionSpecification) fragment;
+				final Shape lifelineShape = lifelines.get(behavior.getCovereds().get(0));
+
+				final Shape behaviorShape = (Shape) lifelineShape.createChild(NotationPackage.eINSTANCE.getShape());
 				behaviorShape.setType("BehaviorExecutionSpecification_Shape");
 				behaviorShape.setElement(behavior);
-				
-				Bounds behaviorLocation = (Bounds) behaviorShape.createLayoutConstraint(NotationPackage.eINSTANCE.getBounds());
+
+				final Bounds behaviorLocation = (Bounds) behaviorShape.createLayoutConstraint(NotationPackage.eINSTANCE.getBounds());
 				behaviorLocation.setX(40);
 				behaviorLocation.setWidth(20);
-				
-				int s = messagePositions.get(((MessageOccurrenceSpecification) behavior.getStart()).getMessage());
-				int h = messagePositions.get(((MessageOccurrenceSpecification) behavior.getFinish()).getMessage()) - s;
-				
+
+				final int s = messagePositions.get(((MessageOccurrenceSpecification) behavior.getStart()).getMessage());
+				final int h = messagePositions.get(((MessageOccurrenceSpecification) behavior.getFinish()).getMessage()) - s;
+
 				behaviorLocation.setY(s-5);
 				behaviorLocation.setHeight(h);
-				
-				DecorationNode decorationNode = (DecorationNode) behaviorShape.createChild(NotationPackage.eINSTANCE.getDecorationNode());
+
+				final DecorationNode decorationNode = (DecorationNode) behaviorShape.createChild(NotationPackage.eINSTANCE.getDecorationNode());
 				decorationNode.setType("BehaviorExecutionSpecification_Behavior");
 
-				Location location = (Location) decorationNode.createLayoutConstraint(NotationPackage.eINSTANCE.getLocation());
+				final Location location = (Location) decorationNode.createLayoutConstraint(NotationPackage.eINSTANCE.getLocation());
 				location.setX(18);
 				location.setY(18);
 			}
 		}
-				
+
 		try {
 			notationResource.save(Collections.emptyMap());
 			diResource.save(Collections.emptyMap());
-		} catch (IOException e) {
+		} catch (final IOException e) {
 
 		}
 	}
 
-	private static void drawMessage(Shape interactionShape, int pos, Message message) {
+	private static void drawMessage(final Shape interactionShape, final int pos, final Message message) {
 		String edgeKind = null, labelKind = null, stereotypeKind = null;
-		
+
 		switch(message.getMessageKind()) {
 		case COMPLETE_LITERAL:
 			break;
@@ -188,48 +189,49 @@ public class UmlVisualizationTest {
 		default:
 			break;
 		}
-		
-		if(edgeKind== null)
-		switch(message.getMessageSort()) {
-		case ASYNCH_CALL_LITERAL:
-			break;
-		case ASYNCH_SIGNAL_LITERAL:
-			break;
-		case CREATE_MESSAGE_LITERAL:
-			edgeKind  = "Message_CreateEdge";
-			labelKind = "Message_CreateNameLabel";
-			stereotypeKind = "Message_CreateStereotypeLabel";
-			break;
-		case DELETE_MESSAGE_LITERAL:
-			break;
-		case REPLY_LITERAL:
-			edgeKind  = "Message_ReplyEdge";
-			labelKind = "Message_ReplyNameLabel";
-			stereotypeKind = "Message_ReplyStereotypeLabel";
-			break;
-		case SYNCH_CALL_LITERAL:
-			edgeKind  = "Message_SynchEdge";
-			labelKind = "Message_SynchNameLabel";
-			stereotypeKind = "Message_SynchStereotypeLabel";
-			break;
+
+		if(edgeKind== null) {
+			switch(message.getMessageSort()) {
+			case ASYNCH_CALL_LITERAL:
+				break;
+			case ASYNCH_SIGNAL_LITERAL:
+				break;
+			case CREATE_MESSAGE_LITERAL:
+				edgeKind  = "Message_CreateEdge";
+				labelKind = "Message_CreateNameLabel";
+				stereotypeKind = "Message_CreateStereotypeLabel";
+				break;
+			case DELETE_MESSAGE_LITERAL:
+				break;
+			case REPLY_LITERAL:
+				edgeKind  = "Message_ReplyEdge";
+				labelKind = "Message_ReplyNameLabel";
+				stereotypeKind = "Message_ReplyStereotypeLabel";
+				break;
+			case SYNCH_CALL_LITERAL:
+				edgeKind  = "Message_SynchEdge";
+				labelKind = "Message_SynchNameLabel";
+				stereotypeKind = "Message_SynchStereotypeLabel";
+				break;
+			}
 		}
 
-		Diagram diagram = (Diagram) interactionShape.eContainer();
-		
-		Connector connector = (Connector) diagram.createEdge(NotationPackage.eINSTANCE.getConnector());
+		final Diagram diagram = (Diagram) interactionShape.eContainer();
+
+		final Connector connector = (Connector) diagram.createEdge(NotationPackage.eINSTANCE.getConnector());
 		connector.setType(edgeKind);
-		
-		MessageEnd receive = message.getReceiveEvent();
+
+		final MessageEnd receive = message.getReceiveEvent();
 		if (receive instanceof MessageOccurrenceSpecification) {
-			Shape rightLifelineShape = lifelines.get(((MessageOccurrenceSpecification) receive).getCovered());
+			final Shape rightLifelineShape = lifelines.get(((MessageOccurrenceSpecification) receive).getCovered());
 			connector.setTarget(rightLifelineShape);
 			if(message.getMessageSort() == MessageSort.CREATE_MESSAGE_LITERAL) {
-				LayoutConstraint constraint = rightLifelineShape.getLayoutConstraint();
+				final LayoutConstraint constraint = rightLifelineShape.getLayoutConstraint();
 				if (constraint instanceof Bounds) {
-					Bounds bounds = (Bounds) constraint;
+					final Bounds bounds = (Bounds) constraint;
 					bounds.setY(messagePositions.get(message));
-					int oldHeight = bounds.getHeight();
-					int newHeight = oldHeight-bounds.getY();
+					final int oldHeight = bounds.getHeight();
+					final int newHeight = oldHeight-bounds.getY();
 					bounds.setHeight(newHeight);
 				}
 			}
@@ -240,10 +242,10 @@ public class UmlVisualizationTest {
 		else {
 			throw new RuntimeException();
 		}
-		
-		MessageEnd send = message.getSendEvent();
+
+		final MessageEnd send = message.getSendEvent();
 		if (send instanceof MessageOccurrenceSpecification) {
-			Shape leftLifelineShape = lifelines.get(((MessageOccurrenceSpecification) send).getCovered());
+			final Shape leftLifelineShape = lifelines.get(((MessageOccurrenceSpecification) send).getCovered());
 			connector.setSource(leftLifelineShape);
 		}
 		else if(message.getMessageKind() == MessageKind.FOUND_LITERAL){
@@ -252,65 +254,65 @@ public class UmlVisualizationTest {
 		else {
 			throw new RuntimeException();
 		}
-		
-		Node nameLabelDecorationNode = connector.createChild(NotationPackage.eINSTANCE.getDecorationNode());
+
+		final Node nameLabelDecorationNode = connector.createChild(NotationPackage.eINSTANCE.getDecorationNode());
 		nameLabelDecorationNode.setType(labelKind);
-		Location nameLabelLocation = (Location) nameLabelDecorationNode.createLayoutConstraint(NotationPackage.eINSTANCE.getLocation());
+		final Location nameLabelLocation = (Location) nameLabelDecorationNode.createLayoutConstraint(NotationPackage.eINSTANCE.getLocation());
 		nameLabelLocation.setX(1);
 		nameLabelLocation.setY(-13);
-		
 
-		Node decorationNode = connector.createChild(NotationPackage.eINSTANCE.getDecorationNode());
+
+		final Node decorationNode = connector.createChild(NotationPackage.eINSTANCE.getDecorationNode());
 		decorationNode.setType(stereotypeKind);
-		Location location = (Location) decorationNode.createLayoutConstraint(NotationPackage.eINSTANCE.getLocation());
+		final Location location = (Location) decorationNode.createLayoutConstraint(NotationPackage.eINSTANCE.getLocation());
 		location.setX(1);
 		location.setY(-33);
-		
+
 		connector.createStyle(NotationPackage.eINSTANCE.getFontStyle());
 		connector.createStyle(NotationPackage.eINSTANCE.getLineStyle());
 		connector.setElement(message);
-		RelativeBendpoints bendpoints = (RelativeBendpoints) connector.createBendpoints(NotationPackage.eINSTANCE.getRelativeBendpoints());
-		bendpoints.setPoints(Arrays.asList(new RelativeBendpoint[] {new RelativeBendpoint(0, 0, -320, 0), new RelativeBendpoint(0, 0, 320, 0)}));
+		final RelativeBendpoints bendpoints = (RelativeBendpoints) connector.createBendpoints(NotationPackage.eINSTANCE.getRelativeBendpoints());
+		bendpoints.setPoints(Arrays.asList(new RelativeBendpoint(0, 0, -320, 0), new RelativeBendpoint(0, 0, 320, 0)));
 
 
 		String sourceId;
 		if(message.getMessageKind() == MessageKind.FOUND_LITERAL) {
-			Integer y = messagePositions.get(message) + 30;
+			final Integer y = messagePositions.get(message) + 30;
 			sourceId = "(10,"+y+")";
 		}
 		else{
-			Shape leftLIfelineShape = (Shape) connector.getSource();
-			Bounds bounds = (Bounds)leftLIfelineShape.getLayoutConstraint();
-			double relative = ((double) pos - bounds.getY())/bounds.getHeight();
+			final Shape leftLIfelineShape = (Shape) connector.getSource();
+			final Bounds bounds = (Bounds)leftLIfelineShape.getLayoutConstraint();
+			final double relative = ((double) pos - bounds.getY())/bounds.getHeight();
 			sourceId = "(0.5,"+relative+")";
 		}
 		((IdentityAnchor) connector.createSourceAnchor(NotationPackage.eINSTANCE.getIdentityAnchor())).setId(sourceId);
-		
-		
+
+
 		String targetId;
 		if(message.getMessageKind() == MessageKind.LOST_LITERAL) {
 			targetId = "(20,100)";
 		}
 		else{
-			Shape leftLIfelineShape = (Shape) connector.getTarget();
-			Bounds bounds = (Bounds)leftLIfelineShape.getLayoutConstraint();
-			double relative = ((double) pos - bounds.getY())/bounds.getHeight();
+			final Shape leftLIfelineShape = (Shape) connector.getTarget();
+			final Bounds bounds = (Bounds)leftLIfelineShape.getLayoutConstraint();
+			final double relative = ((double) pos - bounds.getY())/bounds.getHeight();
 			targetId = "(0.5,"+relative+")";
 		}
 		((IdentityAnchor) connector.createTargetAnchor(NotationPackage.eINSTANCE.getIdentityAnchor())).setId(targetId);
-		
+
 	}
 
-	private static void drawLifeline(Shape interactionShape, int x, int y, int height, Lifeline lifeline) {
+	private static void drawLifeline(final Shape interactionShape, final int x, final int y, final int height, final Lifeline lifeline) {
 		if(lifelines.containsKey(lifeline)) {
 			return;
 		}
-		BasicCompartment basic = (BasicCompartment) EcoreUtil.getObjectByType(interactionShape.getChildren(), NotationPackage.eINSTANCE.getBasicCompartment());
-		Shape lifelineShape = (Shape) basic.createChild(NotationPackage.eINSTANCE.getShape());
+		final BasicCompartment basic = (BasicCompartment) EcoreUtil.getObjectByType(interactionShape.getChildren(), NotationPackage.eINSTANCE.getBasicCompartment());
+		final Shape lifelineShape = (Shape) basic.createChild(NotationPackage.eINSTANCE.getShape());
 		lifelineShape.setType("Lifeline_Shape");
 		lifelineShape.setElement(lifeline);
 		lifelineShape.createChild(NotationPackage.eINSTANCE.getDecorationNode()).setType("Lifeline_NameLabel");
-		Bounds bounds = (Bounds) lifelineShape.createLayoutConstraint(NotationPackage.eINSTANCE.getBounds());
+		final Bounds bounds = (Bounds) lifelineShape.createLayoutConstraint(NotationPackage.eINSTANCE.getBounds());
 		bounds.setX(x);
 		bounds.setY(y);
 		bounds.setHeight(height);
@@ -318,36 +320,36 @@ public class UmlVisualizationTest {
 		lifelines.put(lifeline, lifelineShape);
 	}
 
-	private static Shape drawInteraction(Interaction interaction, Resource notationResource) {
-		Diagram diagramShape = NotationFactory.eINSTANCE.createDiagram();
+	private static Shape drawInteraction(final Interaction interaction, final Resource notationResource) {
+		final Diagram diagramShape = NotationFactory.eINSTANCE.createDiagram();
 		diagramShape.setName(interaction.getName());
 		diagramShape.setMeasurementUnit(MeasurementUnit.PIXEL_LITERAL);
 		diagramShape.setType("PapyrusUMLSequenceDiagram");
 		diagramShape.setElement(interaction);
 		notationResource.getContents().add(diagramShape);
-		
-		Shape interactionShape = (Shape) diagramShape.createChild(NotationPackage.eINSTANCE.getShape());
+
+		final Shape interactionShape = (Shape) diagramShape.createChild(NotationPackage.eINSTANCE.getShape());
 		interactionShape.setType("Interaction_Shape");
 		interactionShape.setElement(interaction);
-		
+
 		interactionShape.createChild(NotationPackage.eINSTANCE.getDecorationNode()).setType("Interaction_NameLabel");
 		interactionShape.createLayoutConstraint(NotationPackage.eINSTANCE.getBounds());
-		
-		
-		BasicCompartment basic = (BasicCompartment) interactionShape.createChild(NotationPackage.eINSTANCE.getBasicCompartment());
+
+
+		final BasicCompartment basic = (BasicCompartment) interactionShape.createChild(NotationPackage.eINSTANCE.getBasicCompartment());
 		basic.setType("Interaction_SubfragmentCompartment");
 		basic.createLayoutConstraint(NotationPackage.eINSTANCE.getBounds());
-		
-		StringValueStyle stringValueStyle = (StringValueStyle) diagramShape.createStyle(NotationPackage.eINSTANCE.getStringValueStyle());
+
+		final StringValueStyle stringValueStyle = (StringValueStyle) diagramShape.createStyle(NotationPackage.eINSTANCE.getStringValueStyle());
 		stringValueStyle.setName("diagram_compatibility_version");
 		stringValueStyle.setStringValue("1.4.0");
-		
+
 		diagramShape.createStyle(NotationPackage.eINSTANCE.getDiagramStyle());
-		
-		PapyrusDiagramStyle style = (PapyrusDiagramStyle) diagramShape.createStyle(StylePackage.eINSTANCE.getPapyrusDiagramStyle());
+
+		final PapyrusDiagramStyle style = (PapyrusDiagramStyle) diagramShape.createStyle(StylePackage.eINSTANCE.getPapyrusDiagramStyle());
 		style.setOwner(interaction);
 		style.setDiagramKindId("org.eclipse.papyrus.uml.diagram.sequence");
-		
+
 		return interactionShape;
 	}
 }

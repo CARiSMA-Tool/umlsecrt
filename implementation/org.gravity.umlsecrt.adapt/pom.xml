@@ -12,4 +12,11 @@
   <artifactId>org.gravity.umlsecrt.adapt</artifactId>
   <version>1.0.0-SNAPSHOT</version>
   <packaging>eclipse-plugin</packaging>
+  <repositories>
+    <repository>
+      <id>Eclipse</id>
+      <layout>p2</layout>
+      <url>http://download.eclipse.org/releases/2021-03</url>
+    </repository>
+  </repositories>
 </project>

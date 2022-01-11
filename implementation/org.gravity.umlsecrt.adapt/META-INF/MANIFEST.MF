@@ -13,14 +13,9 @@ Export-Package: carisma.rt.models.json,
  carisma.rt.models.protocol,
  carisma.rt.models.protocol.impl,
  carisma.rt.models.protocol.util
-Require-Bundle: org.eclipse.uml2.uml,
- org.eclipse.core.runtime,
- org.eclipse.emf.ecore;visibility:=reexport,
- com.google.gson,
+Require-Bundle: com.google.gson,
  org.junit,
  carisma.profile.umlsec,
  org.eclipse.gmf.runtime.notation,
- org.eclipse.papyrus.infra.core,
- org.eclipse.papyrus.uml.diagram.wizards,
  org.eclipse.papyrus.infra.gmfdiag.style
 Bundle-ActivationPolicy: lazy

@@ -19,16 +19,16 @@
       <plugin>
         <groupId>org.eclipse.tycho</groupId>
         <artifactId>tycho-maven-plugin</artifactId>
-        <version>2.3.0</version>
+        <version>2.5.0</version>
         <extensions>true</extensions>
       </plugin>
     </plugins>
   </build>
   <repositories>
     <repository>
-      <id>Eclipse Latest</id>
+      <id>Eclipse</id>
       <layout>p2</layout>
-      <url>https://download.eclipse.org/releases/latest</url>
+      <url>https://download.eclipse.org/releases/2021-03</url>
     </repository>
     <repository>
       <id>eMoflon TIE</id>
@@ -49,6 +49,11 @@
       <id>CARiSMA</id>
       <layout>p2</layout>
       <url>http://carisma.umlsec.de/beta-updatesite</url>
+    </repository>    
+    <repository>
+      <id>GRavITY</id>
+      <layout>p2</layout>
+      <url>https://gravity-tool.org/beta-updatesite</url>
     </repository>
   </repositories>
 </project>
