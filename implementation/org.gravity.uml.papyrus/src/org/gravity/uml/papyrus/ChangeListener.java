@@ -15,7 +15,6 @@ import org.eclipse.emf.transaction.ResourceSetChangeEvent;
 import org.eclipse.emf.transaction.ResourceSetListener;
 import org.eclipse.emf.transaction.RollbackException;
 import org.eclipse.uml2.uml.resource.UMLResource;
-import org.gravity.eclipse.util.JavaProjectUtil;
 import org.gravity.tgg.uml.GravityUmlActivator;
 import org.gravity.tgg.uml.Transformation;
 
@@ -52,8 +51,8 @@ public class ChangeListener implements ResourceSetListener {
 				}
 				final IProject project = file.getProject();
 				try {
-					final Transformation trafo = GravityUmlActivator.getTransformationFactory().getTransformation(
-							JavaProjectUtil.getJavaProject(project), targetResource);
+					final Transformation trafo = GravityUmlActivator.getTransformationFactory()
+							.getTransformation(project);
 					assert trafo != null;
 				} catch (IOException | CoreException e) {
 					e.printStackTrace();
