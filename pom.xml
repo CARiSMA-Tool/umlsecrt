@@ -48,7 +48,7 @@
     <repository>
       <id>CARiSMA</id>
       <layout>p2</layout>
-      <url>http://carisma.umlsec.de/beta-updatesite</url>
+      <url>https://carisma.umlsec.de/beta-updatesite</url>
     </repository>    
     <repository>
       <id>GRavITY</id>
