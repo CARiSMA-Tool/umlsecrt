@@ -12,16 +12,14 @@ import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.ICoreRunnable;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.e4.core.commands.ExpressionContext;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.e4.core.commands.ExpressionContext;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.ISelectionService;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.handlers.HandlerUtil;
-import org.gravity.eclipse.exceptions.TransformationFailedException;
 import org.gravity.tgg.uml.GravityUmlActivator;
 import org.gravity.tgg.uml.Transformation;
 
@@ -30,19 +28,19 @@ public class SyncHandler extends AbstractHandler {
 	private static final Logger LOGGER = Logger.getLogger(SyncHandler.class);
 
 	@Override
-	public Object execute(ExecutionEvent event) throws ExecutionException {
-		IWorkbenchWindow window = HandlerUtil.getActiveWorkbenchWindowChecked(event);
-		ISelectionService service = window.getSelectionService();
-		IStructuredSelection structured = (IStructuredSelection) service.getSelection();
+	public Object execute(final ExecutionEvent event) throws ExecutionException {
+		final IWorkbenchWindow window = HandlerUtil.getActiveWorkbenchWindowChecked(event);
+		final ISelectionService service = window.getSelectionService();
+		final IStructuredSelection structured = (IStructuredSelection) service.getSelection();
 
-		Job job = Job.create("UMLsecRT: Sync UML-model with code", (ICoreRunnable) monitor -> {
-			for (Object selected : structured.toArray()) {
+		final Job job = Job.create("UMLsecRT: Sync UML-model with code", (ICoreRunnable) monitor -> {
+			for (final Object selected : structured.toArray()) {
 				if (selected instanceof IJavaProject) {
-					IJavaProject iJavaProject = (IJavaProject) selected;
+					final IJavaProject iJavaProject = (IJavaProject) selected;
 					try {
-						Transformation transformation = GravityUmlActivator.getTransformationFactory().getTransformation(iJavaProject.getProject());
-						transformation.umlToProject(new NullProgressMonitor());
-					} catch (TransformationFailedException | IOException e) {
+						final Transformation transformation = GravityUmlActivator.getTransformationFactory().getTransformation(iJavaProject.getProject());
+						transformation.applyChangeAndGenerateCode(m->{}, monitor);
+					} catch (final IOException e) {
 						LOGGER.log(Level.ERROR, e.getMessage(), e);
 					}
 				}
@@ -54,7 +52,7 @@ public class SyncHandler extends AbstractHandler {
 	}
 
 	@Override
-	public void setEnabled(Object evaluationContext) {
+	public void setEnabled(final Object evaluationContext) {
 		Object defaultVariable;
 		if (evaluationContext instanceof ExpressionContext) {
 			defaultVariable = ((ExpressionContext) evaluationContext).getRoot().getDefaultVariable();
@@ -64,7 +62,7 @@ public class SyncHandler extends AbstractHandler {
 		}
 		IProject iProject;
 		if (defaultVariable instanceof List<?>) {
-			List<?> list = (List<?>) defaultVariable;
+			final List<?> list = (List<?>) defaultVariable;
 			if (list.isEmpty()) {
 				setBaseEnabled(false);
 				return;
@@ -85,7 +83,7 @@ public class SyncHandler extends AbstractHandler {
 					setBaseEnabled(false);
 					return;
 				}
-			} catch (CoreException e) {
+			} catch (final CoreException e) {
 				e.printStackTrace();
 				setBaseEnabled(false);
 				return;
@@ -94,7 +92,7 @@ public class SyncHandler extends AbstractHandler {
 			setBaseEnabled(false);
 			return;
 		}
-		IFolder gravityFolder = iProject.getFolder(".gravity");
+		final IFolder gravityFolder = iProject.getFolder(".gravity");
 		setBaseEnabled(gravityFolder.exists());
 	}
 }
