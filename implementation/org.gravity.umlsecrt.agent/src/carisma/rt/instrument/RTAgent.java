@@ -3,6 +3,7 @@ package carisma.rt.instrument;
 import java.io.File;
 import java.io.IOException;
 import java.lang.instrument.Instrumentation;
+
 import javassist.NotFoundException;
 
 public class RTAgent {
@@ -22,12 +23,12 @@ public class RTAgent {
 	 */
 	public static File OUT = new File(".");
 
-	public static void premain(String args, Instrumentation instrumentation) {
-		System.out.println("[Agent] Start agent during JVM startup using argument '-javaagent'");
+	public static void premain(final String args, final Instrumentation instrumentation) {
+		System.out.println("[Agent] Starting agent during JVM startup using argument '-javaagent'");
 		run(args, instrumentation);
 	}
 
-	public static void agentmain(String args, Instrumentation instrumentation) {
+	public static void agentmain(final String args, final Instrumentation instrumentation) {
 		System.out.println("[Agent] Load agent into running JVM using Attach API");
 		run(args, instrumentation);
 	}
@@ -36,7 +37,7 @@ public class RTAgent {
 	 * @param args
 	 * @param instrumentation
 	 */
-	private static void run(String args, Instrumentation instrumentation) {
+	private static void run(final String args, final Instrumentation instrumentation) {
 		try {
 			parseArgs(args);
 			instrumentation.addTransformer(new RTTransformer(), instrumentation.isRetransformClassesSupported());
@@ -45,10 +46,10 @@ public class RTAgent {
 		}
 	}
 
-	private static final void parseArgs(String args) throws IOException {
+	private static final void parseArgs(final String args) throws IOException {
 		if (args != null) {
-			for (String arg : args.split(",")) {
-				String[] a = arg.split("=");
+			for (final String arg : args.split(",")) {
+				final String[] a = arg.split("=");
 				switch (a[0].trim().toLowerCase()) {
 				case "trace":
 					TRACE = true;
@@ -61,10 +62,8 @@ public class RTAgent {
 						OUT = new File(a[1]);
 						if (!OUT.exists()) {
 							OUT.mkdirs();
-						} else {
-							if (OUT.isFile()) {
-								throw new IOException("The output directory is a file.");
-							}
+						} else if (OUT.isFile()) {
+							throw new IOException("The output directory is a file.");
 						}
 						break;
 					}
@@ -78,7 +77,7 @@ public class RTAgent {
 	}
 
 	/**
-	 * 
+	 *
 	 */
 	private static void printHelp() {
 		System.out.println(

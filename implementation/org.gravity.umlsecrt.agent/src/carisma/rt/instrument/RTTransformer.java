@@ -1,18 +1,17 @@
 package carisma.rt.instrument;
 
+import java.io.IOException;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.security.ProtectionDomain;
 import java.util.HashSet;
+
 import org.gravity.security.annotations.requirements.Critical;
 import org.gravity.security.annotations.requirements.Integrity;
 import org.gravity.security.annotations.requirements.Secrecy;
 
-import java.io.IOException;
-
 import javassist.ByteArrayClassPath;
 import javassist.CannotCompileException;
-import javassist.ClassPath;
 import javassist.ClassPool;
 import javassist.CtBehavior;
 import javassist.CtClass;
@@ -32,79 +31,85 @@ public class RTTransformer implements ClassFileTransformer {
 	private final HashSet<ClassLoader> loaders = new HashSet<>();
 
 	public RTTransformer() throws NotFoundException {
-		ClassLoader loader = getClass().getClassLoader();
-		LoaderClassPath loaderClassPath = new LoaderClassPath(loader);
-		cPool.appendClassPath(loaderClassPath);
-		loaders.add(loader);
+		final ClassLoader loader = getClass().getClassLoader();
+		final LoaderClassPath loaderClassPath = new LoaderClassPath(loader);
+		this.cPool.appendClassPath(loaderClassPath);
+		this.loaders.add(loader);
 	}
 
 	@Override
-	public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined,
-			ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
+	public byte[] transform(final ClassLoader loader, final String className, final Class<?> classBeingRedefined,
+			final ProtectionDomain protectionDomain, final byte[] classfileBuffer) throws IllegalClassFormatException {
 		// We don't want to instrument classes provided by us or from the JRE core to
 		// which additions aren't possible
-		if (protectionDomain == null // Classes from JRE //TODO: Verify null assumption
-				|| getClass().getProtectionDomain().equals(protectionDomain)) { // Carisma.rt.
-			return classfileBuffer;
+		if ((protectionDomain == null) // Classes from JRE //TODO: Verify null assumption
+				|| getClass().getProtectionDomain().equals(protectionDomain) // Carisma.rt.
+				|| this.cPool.getClass().getProtectionDomain().equals(protectionDomain)) { // javassist
+			return null;
 		}
-
-		String classNameDotted = className.replace("/", ".");
 
 		// This class loader is used to generate java classes from python that cannot be
 		// part of a security check
-//		if ("org.python.core.BytecodeLoader$Loader".equals(loader.getClass().getName())) {
-//			return classfileBuffer;
-//		}
-//		if (classNameDotted.contains("___exposer")) {
-//			return classfileBuffer;
-//		}
-//		if (className.contains("$$EnhancerByCGLIB$$")) {
-//			return classfileBuffer;
-//		}
-
-		if (classNameDotted.startsWith("carisma.rt.instrument.") || classNameDotted.startsWith("javassist.")) {
-			return classfileBuffer;
+		// if
+		// ("org.python.core.BytecodeLoader$Loader".equals(loader.getClass().getName()))
+		// {
+		// return null;
+		// }
+		// if (classNameDotted.contains("___exposer")) {
+		// return null;
+		// }
+		// if (className.contains("$$EnhancerByCGLIB$$")) {
+		// return null;
+		// }
+		if(className.contains("javamelody") || className.contains("jrobin.graph") || className.contains("com.sun.image.codec.jpeg")) {
+			return null;
 		}
 
+		final String classNameDotted = className.replace("/", ".");
 		registerClass(loader, classfileBuffer, classNameDotted);
 		CtClass ctClass;
 		try {
-			ctClass = cPool.get(classNameDotted);
-		} catch (NotFoundException e) {
+			ctClass = this.cPool.get(classNameDotted);
+		} catch (final NotFoundException e) {
 			RTHelper.printAgentError(e);
-			return classfileBuffer;
+			return null;
 		}
+
 		// Interfaces cannot contain concrete methods
-		if (!ctClass.isInterface()) {
-			if (ctClass.isFrozen()) {
-				ctClass.defrost();
-			}
-			try {
-				return transformClass(ctClass);
-			} catch (IOException | RuntimeException | ClassNotFoundException | NotFoundException
-					| CannotCompileException e) {
-				RTHelper.printAgentError(e);
-			}
+		if (ctClass.isInterface()) {
+			return null;
 		}
-		return classfileBuffer;
+
+		if (ctClass.isFrozen()) {
+			ctClass.defrost();
+		}
+		try {
+			return transformClass(ctClass);
+		} catch (IOException | RuntimeException | ClassNotFoundException | NotFoundException
+				| CannotCompileException e) {
+			RTHelper.printAgentError(e);
+			return null;
+		}
 	}
 
 	/**
+	 * Adds the classloader to the cPool if not already present
+	 *
 	 * @param classloader
 	 * @param classfileBuffer
 	 * @param classNameDotted
 	 */
-	private void registerClass(ClassLoader classloader, byte[] classfileBuffer, String classNameDotted) {
-		if (!loaders.contains(classloader)) {
-			LoaderClassPath loaderClassPath = new LoaderClassPath(classloader);
-			cPool.appendClassPath(loaderClassPath);
-			loaders.add(classloader);
+	private void registerClass(final ClassLoader classloader, final byte[] classfileBuffer,
+			final String classNameDotted) {
+		if (this.loaders.add(classloader)) {
+			this.cPool.appendClassPath(new LoaderClassPath(classloader));
 		}
-		ClassPath byteArrayClassPath = new ByteArrayClassPath(classNameDotted, classfileBuffer);
-		cPool.insertClassPath(byteArrayClassPath);
+		this.cPool.insertClassPath(new ByteArrayClassPath(classNameDotted, classfileBuffer));
 	}
 
 	/**
+	 * Adds the security check to the method definitions
+	 *
 	 * @param bytecode
 	 * @param classNameDotted
 	 * @param cPool
@@ -114,39 +119,47 @@ public class RTTransformer implements ClassFileTransformer {
 	 * @throws IOException
 	 * @throws CannotCompileException
 	 */
-	private byte[] transformClass(CtClass ctClass)
+	private byte[] transformClass(final CtClass ctClass)
 			throws NotFoundException, ClassNotFoundException, IOException, CannotCompileException {
-		Critical critical = (Critical) ctClass.getAnnotation(Critical.class);
+		final Critical critical = (Critical) ctClass.getAnnotation(Critical.class);
 		if (critical != null) {
-			classSecrecy = critical.secrecy();
-			classIntegrity = critical.integrity();
+			this.classSecrecy = critical.secrecy();
+			this.classIntegrity = critical.integrity();
 		} else {
-			classSecrecy = new String[0];
-			classIntegrity = new String[0];
+			this.classSecrecy = new String[0];
+			this.classIntegrity = new String[0];
 		}
 
-		fieldCheck = new RTFieldAccessCheck(ctClass, classIntegrity, classSecrecy);
+		this.fieldCheck = new RTFieldAccessCheck(ctClass, this.classIntegrity, this.classSecrecy);
 
-		for (CtBehavior behavior : ctClass.getDeclaredBehaviors()) {
-			int modifiers = behavior.getModifiers();
+		boolean changed = false;
+		for (final CtBehavior behavior : ctClass.getDeclaredBehaviors()) {
+			final int modifiers = behavior.getModifiers();
 			if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers) || behavior.isEmpty()) {
 				continue;
 			}
 			try {
-				if (!addSecurityCheck(ctClass, behavior)) {
+				if (addSecurityCheck(ctClass, behavior)) {
+					changed |= true;
+				} else {
 					System.out.println("[AGENT] Couldn't instrument: " + behavior.getLongName());
 				}
-			} catch (NotFoundException e) {
+			} catch (final NotFoundException e) {
 				RTHelper.printAgentError(e);
+				return null;
 			}
 		}
-		return ctClass.toBytecode();
+		if(changed) {
+			return ctClass.toBytecode();
+		} else {
+			return null;
+		}
 
 	}
 
-	private boolean addSecurityCheck(CtClass declaringClass, CtBehavior behavior)
+	private boolean addSecurityCheck(final CtClass declaringClass, final CtBehavior behavior)
 			throws ClassNotFoundException, NotFoundException {
-		boolean isConstructor = behavior instanceof CtConstructor;
+		final boolean isConstructor = behavior instanceof CtConstructor;
 		if (isConstructor && ((CtConstructor) behavior).isClassInitializer()) {
 			return true;
 		}
@@ -157,22 +170,22 @@ public class RTTransformer implements ClassFileTransformer {
 			return false;
 		}
 		try {
-			behavior.instrument(fieldCheck);
-		} catch (CannotCompileException e) {
+			behavior.instrument(this.fieldCheck);
+		} catch (final CannotCompileException e) {
 			RTHelper.printAgentError(e);
 			return false;
 		}
 		return true;
 	}
 
-	private boolean addBeforeMethod(CtClass declaringClass, CtBehavior ctBehavior, boolean isConstructor)
-			throws ClassNotFoundException, NotFoundException {
+	private boolean addBeforeMethod(final CtClass declaringClass, final CtBehavior ctBehavior,
+			final boolean isConstructor) throws ClassNotFoundException, NotFoundException {
 
-		String signature = ctBehavior.getLongName();
+		final String signature = ctBehavior.getLongName();
 
 		Secrecy secrecyAnnotation = null;
 		Integrity integrityAnnotation = null;
-		for (Object o : ctBehavior.getAnnotations()) {
+		for (final Object o : ctBehavior.getAnnotations()) {
 			if (o instanceof Secrecy) {
 				secrecyAnnotation = (Secrecy) o;
 			} else if (o instanceof Integrity) {
@@ -180,41 +193,45 @@ public class RTTransformer implements ClassFileTransformer {
 			}
 		}
 
-		boolean hasSecrecyAnnotation = secrecyAnnotation != null;
+		final boolean hasSecrecyAnnotation = secrecyAnnotation != null;
 		boolean hasSecrecy = hasSecrecyAnnotation;
-		int secrecyArrayLength = classSecrecy.length;
+		int secrecyArrayLength = this.classSecrecy.length;
 		if (hasSecrecy) {
 			secrecyArrayLength++;
 		}
 
 		// Get stack
-		StringBuilder before = new StringBuilder("{String thisSignature = \"").append(signature).append(
-				"\";carisma.rt.instrument.RTStack carismaRTStack = carisma.rt.instrument.RTStackManager.getStack();carisma.rt.instrument.RTAnnotation annotCaller = (carisma.rt.instrument.RTAnnotation) carismaRTStack.peek();java.lang.String[] secrecySet = new java.lang.String["
-						+ secrecyArrayLength + "];");
+		final StringBuilder before = new StringBuilder("{"
+				+ "String thisSignature = \"").append(signature).append("\";"
+						+ "carisma.rt.instrument.RTStack carismaRTStack = carisma.rt.instrument.RTStackManager.getStack();"
+						+ "carisma.rt.instrument.RTAnnotation annotCaller = (carisma.rt.instrument.RTAnnotation) carismaRTStack.peek();"
+						+ "java.lang.String[] secrecySet = new java.lang.String[" + secrecyArrayLength + "];");
+		int secrecyIndex = 0;
 		if (hasSecrecyAnnotation) {
+			secrecyIndex = 1;
 			before.append("secrecySet[0]=thisSignature;");
 		}
 
-		int secrecyIndex = 1;
-		for (String s : classSecrecy) {
+		for (final String s : this.classSecrecy) {
 			hasSecrecy = hasSecrecy || signature.endsWith(s);
 			before.append("secrecySet[").append(secrecyIndex++).append("]=\"").append(s).append("\";");
 		}
 
-		boolean hasIntegrityAnnotation = integrityAnnotation != null;
+		final boolean hasIntegrityAnnotation = integrityAnnotation != null;
 		boolean hasIntegrity = hasIntegrityAnnotation;
-		int integrityArrayLength = classIntegrity.length;
+		int integrityArrayLength = this.classIntegrity.length;
 		if (hasIntegrity) {
 			integrityArrayLength++;
 		}
 
 		before.append("java.lang.String[] integritySet = new java.lang.String[").append(integrityArrayLength)
-				.append("];");
+		.append("];");
+		int integrityIndex = 0;
 		if (hasIntegrityAnnotation) {
+			integrityIndex = 1;
 			before.append("integritySet[0]=thisSignature;");
 		}
-		int integrityIndex = 1;
-		for (String s : classIntegrity) {
+		for (final String s : this.classIntegrity) {
 			hasIntegrity = hasIntegrity || signature.endsWith(s);
 			before.append("integritySet[").append(integrityIndex++).append("]=\"").append(s).append("\";");
 		}
@@ -236,13 +253,13 @@ public class RTTransformer implements ClassFileTransformer {
 			before.append(
 					"if(!callerHasSecrecy){violationSecrecy = \"[SECURITY VIOLATION SECRECY] - The member \"+thisSignature+\" requires secrecy but the accessor \"+annotCaller.getSignature()+\" doesn't provide secrecy.\";System.err.println(violationSecrecy);");
 			if (hasSecrecyAnnotation) {
-				CtClass returnType = getReturnType(ctBehavior, declaringClass);
-				String earlyReturnSecrecy = RTHelper.getEarlyReturn(declaringClass, returnType,
+				final CtClass returnType = getReturnType(ctBehavior, declaringClass);
+				final String earlyReturnSecrecy = RTHelper.getEarlyReturn(declaringClass, returnType,
 						secrecyAnnotation.earlyReturn());
 				if (earlyReturnSecrecy != null) {
 					before.append(
 							"violationIntegrity=\"[SECURITY VIOLATION SECRECY] - early return\";System.err.println(violationIntegrity);carismaRTStack.print(violationIntegrity);return ")
-							.append(earlyReturnSecrecy).append(";");
+					.append(earlyReturnSecrecy).append(";");
 				}
 			}
 			before.append("}");
@@ -256,15 +273,15 @@ public class RTTransformer implements ClassFileTransformer {
 			// if the instrumented method has integrity add code for checking the caller for
 			// integrity
 			before.append(
-					"if(!annotCaller.hasIntegrity(thisSignature)){violationIntegrity = \"[SECURITY VIOLATION INTEGRITY] - The member \"+thisSignature\" requires integrity but the accessor \"+annotCaller.getSignature()+\" doesn't provides integrity.\";System.err.println(violationIntegrity);");
+					"if(!annotCaller.hasIntegrity(thisSignature)){violationIntegrity = \"[SECURITY VIOLATION INTEGRITY] - The member \"+thisSignature+\" requires integrity but the accessor \"+annotCaller.getSignature()+\" doesn't provides integrity.\";System.err.println(violationIntegrity);");
 			if (hasIntegrityAnnotation) {
-				CtClass returnType = getReturnType(ctBehavior, declaringClass);
-				String earlyReturnIntegrity = RTHelper.getEarlyReturn(declaringClass, returnType,
+				final CtClass returnType = getReturnType(ctBehavior, declaringClass);
+				final String earlyReturnIntegrity = RTHelper.getEarlyReturn(declaringClass, returnType,
 						integrityAnnotation.earlyReturn());
 				if (earlyReturnIntegrity != null) {
 					before.append(
 							"violationIntegrity=\"[SECURITY VIOLATION INTEGRITY] - early return\";System.err.println();carismaRTStack.print(violationIntegrity);return ")
-							.append(earlyReturnIntegrity).append(";");
+					.append(earlyReturnIntegrity).append(";");
 				}
 			}
 			before.append("}");
@@ -284,8 +301,10 @@ public class RTTransformer implements ClassFileTransformer {
 			} else {
 				ctBehavior.insertBefore(before.toString());
 			}
-		} catch (CannotCompileException e) {
+		} catch (final CannotCompileException e) {
 			RTHelper.printAgentError(e);
+
+			System.out.println(before);
 			return false;
 		}
 		return true;
@@ -293,13 +312,13 @@ public class RTTransformer implements ClassFileTransformer {
 
 	/**
 	 * Gets the type of an early return value
-	 * 
+	 *
 	 * @param ctBehavior The behavior
 	 * @param ctClass    The class declaring the behavior
 	 * @return The type
 	 * @throws NotFoundException If there is an javaassist problem
 	 */
-	private CtClass getReturnType(CtBehavior ctBehavior, CtClass ctClass) throws NotFoundException {
+	private CtClass getReturnType(final CtBehavior ctBehavior, final CtClass ctClass) throws NotFoundException {
 		CtClass returnType = null;
 		if (ctBehavior instanceof CtConstructor) {
 			returnType = ctClass;
@@ -313,13 +332,13 @@ public class RTTransformer implements ClassFileTransformer {
 
 	/**
 	 * Adds the stack.pop() at the end of the method
-	 * 
+	 *
 	 * @param ctBehavior The member to which the functionality should be added
 	 * @param ctClass
 	 * @param stackName
 	 * @return
 	 */
-	private boolean addAfterMethod(CtBehavior ctBehavior, CtClass ctClass) {
+	private boolean addAfterMethod(final CtBehavior ctBehavior, final CtClass ctClass) {
 		String string = "";
 		if ("org.eclipse.osgi.internal.loader.BundleLoader".equals(ctClass.getName())
 				&& "createClassLoader".equals(ctBehavior.getName())) {
@@ -330,8 +349,7 @@ public class RTTransformer implements ClassFileTransformer {
 
 		try {
 			ctBehavior.insertAfter(string + "carisma.rt.instrument.RTStackManager.getStack().pop();", true);
-		} catch (CannotCompileException e) {
-			System.out.println("------> ctBehavior.insertAfter(after)");
+		} catch (final CannotCompileException e) {
 			RTHelper.printAgentError(e);
 			return false;
 		}
