@@ -1,0 +1,32 @@
+#using org.gravity.tgg.modisco.uml.*
+#using AttrCondDefLibrary.*
+
+#rule FieldDec2Property4Enum #with org.gravity.tgg.modisco.uml
+
+#source { 
+	jOwnerType : EnumDeclaration{
+		++-bodyDeclarations->bodyDeclaration
+	}
+	
+	bodyDeclaration : MFieldDefinition
+}
+
+#target {
+	uOwnerType : Enumeration {
+		++-ownedAttribute->feature
+	}
+	
+	feature : Property
+}
+
+#correspondence {
+	jo2uo : ASTNode2Element{
+		#src->jOwnerType
+		#trg->uOwnerType
+	}
+	
+	nd2ne : ASTNode2Element {
+		#src->bodyDeclaration
+		#trg->feature
+	}
+}

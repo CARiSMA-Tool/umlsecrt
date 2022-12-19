@@ -1,0 +1,14 @@
+#using org.gravity.tgg.modisco.uml.*
+#using AttrCondDefLibrary.*
+
+#rule OrphanedClassDec2OrphanedClass #extends OrphanedTypeDec2OrphanedType_Abstract #with org.gravity.tgg.modisco.uml
+
+#source { 
+	bodyDeclaration : AbstractTypeDeclaration
+}
+
+#target {
+	umlPackage : Model {
+		name == "externals"
+	}
+}

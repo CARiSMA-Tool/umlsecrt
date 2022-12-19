@@ -1,0 +1,25 @@
+#using org.gravity.tgg.modisco.uml.*
+#using AttrCondDefLibrary.*
+
+#rule AnnotationTypeDeclaration2Interface #with org.gravity.tgg.modisco.uml
+
+#source { 
+	++bodyDeclaration:AnnotationTypeDeclaration
+}
+
+#target {
+	++feature:Interface
+}
+
+#correspondence {
+	++ b2e : ASTNode2Element {
+		#src->bodyDeclaration
+		#trg->feature
+	}
+}
+
+#attributeConditions {
+	eq(bodyDeclaration.name, feature.name)
+	nonParameterizedName(feature.name)
+	//TODO make sure the uml Interface really is an Annotation(impossible?)...
+}

@@ -1,0 +1,23 @@
+#using org.gravity.tgg.modisco.uml.*
+#using AttrCondDefLibrary.*
+
+#rule EnumDec2Enum #with org.gravity.tgg.modisco.uml
+
+#source { 
+	++ bodyDeclaration : EnumDeclaration
+}
+
+#target {
+	++ feature : Enumeration
+}
+
+#correspondence {
+	++ b2e : ASTNode2Element {
+		#src->bodyDeclaration
+		#trg->feature
+	}
+}
+
+#attributeConditions {
+	eq(bodyDeclaration.name, feature.name)
+}

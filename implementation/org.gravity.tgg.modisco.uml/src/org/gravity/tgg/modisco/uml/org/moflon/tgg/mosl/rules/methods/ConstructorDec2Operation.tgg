@@ -1,0 +1,32 @@
+#using org.gravity.tgg.modisco.uml.*
+#using AttrCondDefLibrary.*
+
+#rule ConstructorDec2Operation #with org.gravity.tgg.modisco.uml
+
+#source {	
+	++bodyDeclaration:MConstructorDefinition
+}
+
+#target {
+	++feature:uml.Operation {
+		++-ownedComment->comment
+	}
+	
+	++comment:Comment {
+		body:="Constructor"
+		++-annotatedElement->feature
+	}
+}
+
+#correspondence {	
+	++ b2e :ASTNode2Element {
+		#src->bodyDeclaration
+		#trg->feature
+	}
+}
+
+#attributeConditions {
+	eq(bodyDeclaration.name, feature.name)
+}
+
+

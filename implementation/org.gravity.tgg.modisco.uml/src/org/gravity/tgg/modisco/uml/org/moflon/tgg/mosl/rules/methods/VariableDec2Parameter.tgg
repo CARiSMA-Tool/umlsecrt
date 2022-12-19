@@ -1,0 +1,60 @@
+#using org.gravity.tgg.modisco.uml.*
+#using AttrCondDefLibrary.*
+
+#rule VariableDec2Parameter4 #with org.gravity.tgg.modisco.uml
+
+#source {
+	method:AbstractMethodDeclaration {
+		++ -parameters -> variableDec
+	}
+
+	++variableDec:MSingleVariableDeclaration{
+		++ -type -> typeAccess
+	}
+
+	++typeAccess:TypeAccess {
+		++-type -> jType
+	}
+
+	jType:Type
+}
+
+#target {
+	operation:uml.Operation {
+		++ -ownedParameter -> param
+	}
+
+	++param:Parameter{
+		++-type -> uType
+	}
+
+	uType:Type
+}
+
+#correspondence {
+	md2o :ASTNode2Element {
+		#src->method
+		#trg->operation
+	}
+
+	++ vd2p :ASTNode2Element {
+		#src->variableDec
+		#trg->param
+	}
+
+	++ty2p:TypeAccess2Parameter {
+		#src->typeAccess
+		#trg->param
+	}
+
+	ne2ne:ASTNode2Element {
+		#src->jType
+		#trg->uType
+	}
+}
+
+#attributeConditions {
+	eq(variableDec.name, param.name)
+
+	isInParameter(param.direction)
+}
