@@ -1,0 +1,76 @@
+IMPORTS{
+  import java.util.LinkedList;
+  import java.util.HashMap;
+  import java.util.Set;
+  import java.util.Map;
+  import java.util.Collection;
+  import java.util.Collections;
+  
+  import java.nio.file.Files;
+  import java.nio.file.Paths;
+  
+  import com.google.gson.Gson;
+  
+  import good.Good;
+  import cwe.Finalizable;
+  
+}
+GLOBAL{
+  VARIABLES{
+    LinkedList<String> stack = new LinkedList<>();
+    Map<String,Collection<String>> secrecyMap =  readSecurityLevels("secrecy.json");
+    Map<String,Collection<String>> integrityMap =  readSecurityLevels("integrity.json");
+  }
+  EVENTS{
+    enterM1(String id) = {Finalizable.finalize(*)} where id = "Finalizable.finalize";
+    enterMethod() = {enterM1}
+    returnM1() = {Finalizable.finalize(*)uponReturning(*)}
+    exitMethod() = {}
+  }
+  PROPERTY secureDependency{
+    STATES{
+      BAD{bad {System.err.println("Illegal Access");System.exit(-1);}}
+      STARTING{ok}
+    }
+    TRANSITIONS {
+      ok -> ok [exitMethod \ \ stack.pop();]
+      ok -> bad [enterMethod \ !checkSecureDependency(stack.peek(),id) \ ]
+      ok -> ok [enterMethod \ \ System.out.println("Push: "+id);stack.push(id); ]
+    }
+  }
+}
+METHODS{
+  boolean checkSecureDependency(String caller, String callee){
+  	System.out.println("Check: "+caller+" -> "+callee); 
+    if(caller == null) {
+      return true;
+    }
+    return checkSecrecy(caller,callee) && checkIntegrity(caller, callee);
+  }
+  
+  boolean checkSecrecy(String caller, String callee){
+    Collection<String> calleeSecrecy = secrecyMap.getOrDefault(callee, Collections.emptySet());
+    if(secrecyMap.get(caller).contains(callee)) {
+      return calleeSecrecy.contains(callee);
+    }
+    return !calleeSecrecy.contains(callee);
+  }
+  
+  boolean checkIntegrity(String caller, String callee){
+    Collection<String> calleeIntegrity = integrityMap.getOrDefault(callee, Collections.emptySet());
+    if(secrecyMap.get(caller).contains(callee)) {
+      return calleeIntegrity.contains(callee);
+    }
+    return !calleeIntegrity.contains(callee);
+  }
+  
+  Map<String, Collection<String>> readSecurityLevels(String path) {
+    try {
+      return (Map<String, Collection<String>>) new Gson().fromJson(Files.newBufferedReader(Paths.get(path)), Map.class);
+    } catch (Exception e) {
+      e.printStackTrace();
+      System.exit(-1);
+    }
+    return null;
+  }
+}

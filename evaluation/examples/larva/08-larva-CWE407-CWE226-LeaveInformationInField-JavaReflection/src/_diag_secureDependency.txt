@@ -1,0 +1,10 @@
+digraph _logic_secureDependency {
+rankdir=LR;
+node [shape = circle]; ok;
+node [shape = octagon]; bad;
+node [shape = point]; _s_s;
+_s_s -> ok;
+ok -> ok [ label = "(1) exitMethod\\\\stack . pop ( ) ; "];
+ok -> bad [ label = "(2) enterMethod\\! checkSecureDependency ( stack . peek ( ) , id ) "];
+ok -> ok [ label = "(3) enterMethod\\\\System . out . println ( \" Push:  \" + id ) ; stack . push ( id ) ; "];
+}

@@ -1,0 +1,1 @@
+Execute all main methods using the Java Security Manager and given property files using "java -Djava.security.manager -Djava.security.policy=policy ..."

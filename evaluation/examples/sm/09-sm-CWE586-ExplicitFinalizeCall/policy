@@ -1,0 +1,9 @@
+grant codeBase "file:${user.dir}/bin/-" {
+	permission java.lang.RuntimePermission "finalize";
+	permission java.lang.RuntimePermission "closeClassLoader";
+	permission java.io.FilePermission "<<ALL FILES>>", "read";
+	permission java.util.PropertyPermission "user.dir", "read";
+};
+grant codeBase "file:${user.dir}/good/-" {
+	permission java.lang.RuntimePermission "finalize";
+};

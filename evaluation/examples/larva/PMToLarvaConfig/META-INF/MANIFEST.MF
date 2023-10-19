@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Automatic-Module-Name: PMToLarvaConfig
+Bundle-Name: PMToLarvaConfig
+Bundle-SymbolicName: PMToLarvaConfig
+Bundle-Version: 1.0.0.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Export-Package: .
+Require-Bundle: org.eclipse.emf.ecore,
+ org.eclipse.emf.ecore.xmi,
+ org.gravity.typegraph.basic,
+ org.eclipse.emf.common

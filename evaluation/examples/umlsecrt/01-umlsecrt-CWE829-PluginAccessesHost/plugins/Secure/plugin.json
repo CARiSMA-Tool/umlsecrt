@@ -1,0 +1,6 @@
+{
+  "secureFR" : "secure.FieldRead",
+  "secureFW" : "secure.FieldWrite",
+  "secureMG" : "secure.MethodGet",
+  "secureMS" : "secure.MethodSet"  
+}

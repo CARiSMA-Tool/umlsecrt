@@ -1,0 +1,4 @@
+[secureDependency]AUTOMATON::> secureDependency() STATE::>ok
+Push: MethodCall.call
+[secureDependency]MOVED ON METHODCALL: void example.MethodCall.call() TO STATE::> ok
+[secureDependency]AUTOMATON::> secureDependency() STATE::>ok
