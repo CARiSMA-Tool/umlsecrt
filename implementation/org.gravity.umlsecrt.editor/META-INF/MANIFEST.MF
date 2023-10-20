@@ -9,7 +9,7 @@ Bundle-ActivationPolicy: lazy
 Require-Bundle: org.eclipse.jdt.core,
  org.eclipse.core.resources,
  org.eclipse.core.runtime;bundle-version="3.13.0",
- org.gravity.security.annotations,
+ org.gravity.security.annotations.pm,
  org.eclipse.ui,
  org.gravity.tgg.modisco.uml,
  org.eclipse.uml2.uml,

@@ -6,6 +6,11 @@
   <artifactId>umlsecrt</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
+
+  <properties>
+    <dependency-plugin>3.6.0</dependency-plugin>
+  </properties>
+
   <modules>
     <module>implementation/org.gravity.umlsecrt.agent</module>
     <module>implementation/org.gravity.umlsecrt.editor</module>
