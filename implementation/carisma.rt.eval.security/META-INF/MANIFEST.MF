@@ -1,7 +1,0 @@
-Manifest-Version: 1.0
-Bundle-ManifestVersion: 2
-Bundle-Name: Security Eval
-Bundle-SymbolicName: carisma.rt.eval.security
-Bundle-Version: 1.0.0.qualifier
-Automatic-Module-Name: carisma.rt.eval.security
-Bundle-RequiredExecutionEnvironment: JavaSE-11
