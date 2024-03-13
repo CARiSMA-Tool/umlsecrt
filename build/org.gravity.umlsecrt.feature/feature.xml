@@ -96,7 +96,6 @@ Except as expressly stated in Sections 2(a) and 2(b) above, Recipient receives n
       <import plugin="org.eclipse.jdt.core"/>
       <import plugin="org.eclipse.core.resources"/>
       <import plugin="org.eclipse.core.runtime" version="3.13.0" match="greaterOrEqual"/>
-      <import plugin="org.gravity.security.annotations"/>
       <import plugin="org.eclipse.ui"/>
       <import plugin="org.gravity.tgg.modisco.uml"/>
       <import plugin="org.eclipse.uml2.uml"/>
@@ -118,20 +117,15 @@ Except as expressly stated in Sections 2(a) and 2(b) above, Recipient receives n
       <import plugin="org.eclipse.papyrus.infra.gmfdiag.style"/>
       <import feature="org.eclipse.papyrus.infra.gmfdiag.feature" version="3.0.0.202103101059"/>
       <import feature="org.eclipse.papyrus.editor.feature" version="2.0.0.202103101059"/>
+      <import feature="org.gravity.features.security" version="1.0.3.qualifier"/>
    </requires>
 
    <plugin
          id="org.gravity.umlsecrt.editor"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+         version="0.0.0"/>
 
    <plugin
          id="org.gravity.umlsecrt.adapt"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+         version="0.0.0"/>
 
 </feature>
