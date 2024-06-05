@@ -8,8 +8,6 @@ Bundle-Vendor: RGSE - University of Koblenz-Landau
 Bundle-RequiredExecutionEnvironment: JavaSE-17
 Automatic-Module-Name: org.gravity.uml.papyrus
 Bundle-ActivationPolicy: lazy
-Require-Bundle: org.eclipse.osgi,
- org.eclipse.emf.transaction,
+Require-Bundle: org.eclipse.emf.transaction,
  org.eclipse.uml2.uml,
- org.gravity.tgg.modisco.uml,
- org.gravity.eclipse
+ org.gravity.tgg.modisco.uml

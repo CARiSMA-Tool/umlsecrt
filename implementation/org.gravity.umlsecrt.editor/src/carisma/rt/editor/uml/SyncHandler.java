@@ -8,17 +8,14 @@ import org.apache.log4j.Logger;
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
-import org.eclipse.core.resources.IFolder;
+import org.eclipse.core.expressions.IEvaluationContext;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.ICoreRunnable;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.e4.core.commands.ExpressionContext;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.ui.ISelectionService;
-import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.handlers.HandlerUtil;
 import org.gravity.tgg.uml.GravityUmlActivator;
 import org.gravity.tgg.uml.Transformation;
@@ -29,17 +26,18 @@ public class SyncHandler extends AbstractHandler {
 
 	@Override
 	public Object execute(final ExecutionEvent event) throws ExecutionException {
-		final IWorkbenchWindow window = HandlerUtil.getActiveWorkbenchWindowChecked(event);
-		final ISelectionService service = window.getSelectionService();
-		final IStructuredSelection structured = (IStructuredSelection) service.getSelection();
+		final var window = HandlerUtil.getActiveWorkbenchWindowChecked(event);
+		final var service = window.getSelectionService();
+		final var structured = (IStructuredSelection) service.getSelection();
 
-		final Job job = Job.create("UMLsecRT: Sync UML-model with code", (ICoreRunnable) monitor -> {
+		final var job = Job.create("UMLsecRT: Sync UML-model with code", (ICoreRunnable) monitor -> {
 			for (final Object selected : structured.toArray()) {
-				if (selected instanceof IJavaProject) {
-					final IJavaProject iJavaProject = (IJavaProject) selected;
+				if (selected instanceof final IJavaProject iJavaProject) {
 					try {
-						final Transformation transformation = GravityUmlActivator.getTransformationFactory().getTransformation(iJavaProject.getProject());
-						transformation.applyChangeAndGenerateCode(m->{}, monitor);
+						final Transformation transformation = GravityUmlActivator.getTransformationFactory()
+								.getTransformation(iJavaProject.getProject());
+						transformation.applyChangeAndGenerateCode(m -> {
+						}, monitor);
 					} catch (final IOException e) {
 						LOGGER.log(Level.ERROR, e.getMessage(), e);
 					}
@@ -54,23 +52,22 @@ public class SyncHandler extends AbstractHandler {
 	@Override
 	public void setEnabled(final Object evaluationContext) {
 		Object defaultVariable;
-		if (evaluationContext instanceof ExpressionContext) {
-			defaultVariable = ((ExpressionContext) evaluationContext).getRoot().getDefaultVariable();
-		} else {
-			setBaseEnabled(false);
+		if (!(evaluationContext instanceof final IEvaluationContext context)) {
+			this.setBaseEnabled(false);
 			return;
 		}
+		defaultVariable = context.getRoot().getDefaultVariable();
 		IProject iProject;
-		if (defaultVariable instanceof List<?>) {
-			final List<?> list = (List<?>) defaultVariable;
+		if (defaultVariable instanceof final List<?> list) {
 			if (list.isEmpty()) {
-				setBaseEnabled(false);
+				this.setBaseEnabled(false);
 				return;
-			} else if (list.size() == 1) {
+			}
+			if (list.size() == 1) {
 				defaultVariable = list.get(0);
 			} else {
 				System.out.println("There is more than one selected entry");
-				setBaseEnabled(false);
+				this.setBaseEnabled(false);
 				return;
 			}
 		}
@@ -80,19 +77,19 @@ public class SyncHandler extends AbstractHandler {
 			iProject = (IProject) defaultVariable;
 			try {
 				if (!iProject.hasNature(JavaCore.NATURE_ID)) {
-					setBaseEnabled(false);
+					this.setBaseEnabled(false);
 					return;
 				}
 			} catch (final CoreException e) {
 				e.printStackTrace();
-				setBaseEnabled(false);
+				this.setBaseEnabled(false);
 				return;
 			}
 		} else {
-			setBaseEnabled(false);
+			this.setBaseEnabled(false);
 			return;
 		}
-		final IFolder gravityFolder = iProject.getFolder(".gravity");
-		setBaseEnabled(gravityFolder.exists());
+		final var gravityFolder = iProject.getFolder(".gravity");
+		this.setBaseEnabled(gravityFolder.exists());
 	}
 }
