@@ -8,7 +8,7 @@
   <packaging>pom</packaging>
 
   <properties>
-    <dependency-plugin>3.6.0</dependency-plugin>
+    <dependency-plugin>3.6.1</dependency-plugin>
   </properties>
 
   <modules>
@@ -24,7 +24,7 @@
       <plugin>
         <groupId>org.eclipse.tycho</groupId>
         <artifactId>tycho-maven-plugin</artifactId>
-        <version>4.0.6</version>
+        <version>4.0.8</version>
         <extensions>true</extensions>
       </plugin>
     </plugins>
@@ -33,7 +33,7 @@
     <repository>
       <id>Eclipse</id>
       <layout>p2</layout>
-      <url>https://download.eclipse.org/releases/2023-06</url>
+      <url>https://download.eclipse.org/releases/2024-03</url>
     </repository>
     <repository>
       <id>eMoflon TIE</id>
@@ -58,7 +58,7 @@
     <repository>
       <id>GRavITY</id>
       <layout>p2</layout>
-      <url>https://gravity-tool.org/beta-updatesite</url>
+      <url>https://gravity-tool.org/updatesite</url>
     </repository>
   </repositories>
 </project>
