@@ -36,6 +36,10 @@
       <url>https://download.eclipse.org/releases/2024-03</url>
     </repository>
     <repository>
+      <id>Papyrus</id>
+      <layout>p2</layout>
+      <url>https://download.eclipse.org/modeling/mdt/papyrus/updates/releases/2023-12</url>
+    <repository>
       <id>eMoflon TIE</id>
       <layout>p2</layout>
       <url>https://gravity-tool.org/emoflon-tie/updatesite</url>
