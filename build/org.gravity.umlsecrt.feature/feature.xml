@@ -87,7 +87,7 @@ Except as expressly stated in Sections 2(a) and 2(b) above, Recipient receives n
    </license>
 
    <url>
-      <discovery label="CARiSMA" url="https://rgse.uni-koblenz.de/carisma/beta-updatesite/"/>
+      <discovery label="CARiSMA" url="https://carisma-tool.github.io/carisma-tool/"/>
       <discovery label="GRaViTY" url="https://gravity-tool.github.io/updatesite/"/>
       <discovery label="eMoflon" url="https://www.gravity-tool.org/emoflon-tie/updatesite/"/>
    </url>
