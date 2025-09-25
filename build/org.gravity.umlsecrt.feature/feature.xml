@@ -4,15 +4,15 @@
       label="UMLsecRT Editor"
       version="1.0.0.qualifier">
 
-   <description url="http://www.example.com/description">
-      [Enter Feature Description here.]
+   <description url="http://www.gravity-tool.org">
+      Enforcement of UMLsec-like security annotations in Java at runtime with roundtrip engineering to update design models with observed securtiy violations.
    </description>
 
-   <copyright url="http://www.example.com/copyright">
-      [Enter Copyright Description here.]
+   <copyright>
+      (C) Copyright ${year} University of Koblenz-Landau and Ruhr University Bochum
    </copyright>
 
-   <license url="https://www.eclipse.org/legal/epl-2.0/#">
+   <license url="https://www.eclipse.org/legal/epl-2.0/">
       Eclipse Public License - v 2.0
 THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF THIS ECLIPSE PUBLIC LICENSE (“AGREEMENT”). ANY USE, REPRODUCTION OR DISTRIBUTION OF THE PROGRAM CONSTITUTES RECIPIENT&apos;S ACCEPTANCE OF THIS AGREEMENT.
 
@@ -87,6 +87,7 @@ Except as expressly stated in Sections 2(a) and 2(b) above, Recipient receives n
    </license>
 
    <url>
+      <update label="GRaViTY Updatesite" url="https://www.gravity-tool.org/updatesite"/>
       <discovery label="CARiSMA" url="https://carisma-tool.github.io/carisma-tool/"/>
       <discovery label="GRaViTY" url="https://gravity-tool.github.io/updatesite/"/>
       <discovery label="eMoflon" url="https://www.gravity-tool.org/emoflon-tie/updatesite/"/>
