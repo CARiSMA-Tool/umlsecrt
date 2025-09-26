@@ -26,6 +26,9 @@
         <artifactId>tycho-maven-plugin</artifactId>
         <version>4.0.13</version>
         <extensions>true</extensions>
+        <configuration>
+          <pomDependencies>consider</pomDependencies>
+        </configuration>
       </plugin>
     </plugins>
   </build>
